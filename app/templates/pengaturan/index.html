@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Pengaturan Toko - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-6 md:p-8 max-w-2xl">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-text">Pengaturan Toko</h1>
+    <p class="text-sm text-text-muted mt-0.5">Atur profil instansi lab, besaran pajak transaksi, dan batas peringatan stok</p>
+  </div>
+
+  <div class="bg-surface rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
+    <form method="POST" action="{{ url_for('pengaturan.index') }}" class="space-y-6" id="formPengaturan">
+      {{ form.hidden_tag() }}
+
+      <!-- Identitas Toko -->
+      <div class="space-y-4">
+        <h2 class="text-base font-bold text-text flex items-center gap-2 border-b border-border pb-2">
+          <span class="material-symbols-outlined text-[20px] text-primary">store</span>
+          Identitas Toko & Lab
+        </h2>
+
+        <div>
+          <label for="nama_toko" class="block text-sm font-semibold text-text mb-1">
+            Nama Toko <span class="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            id="nama_toko"
+            name="nama_toko"
+            required
+            value="{{ form.nama_toko.data or pengaturan.nama_toko }}"
+            placeholder="Contoh: SMK Mart POS Lab RPL"
+            class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.nama_toko.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p class="mt-1 text-xs text-text-muted">Nama ini akan dicetak di bagian paling atas struk dan header aplikasi</p>
+          {% if form.nama_toko.errors %}
+            {% for error in form.nama_toko.errors %}
+              <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <div>
+          <label for="alamat_toko" class="block text-sm font-semibold text-text mb-1">
+            Alamat Toko
+          </label>
+          <textarea
+            id="alamat_toko"
+            name="alamat_toko"
+            rows="2"
+            placeholder="Alamat fisik laboratorium atau sekolah..."
+            class="block w-full px-3.5 py-2.5 rounded-lg border border-border focus:border-primary bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >{{ form.alamat_toko.data or pengaturan.alamat_toko or '' }}</textarea>
+          <p class="mt-1 text-xs text-text-muted">Alamat toko akan dicetak di baris kedua struk belanja</p>
+        </div>
+      </div>
+
+      <!-- Parameter Transaksi & Stok -->
+      <div class="space-y-4 pt-2">
+        <h2 class="text-base font-bold text-text flex items-center gap-2 border-b border-border pb-2">
+          <span class="material-symbols-outlined text-[20px] text-primary">tune</span>
+          Parameter Pajak & Inventaris
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="tarif_pajak" class="block text-sm font-semibold text-text mb-1">
+              Tarif Pajak (%) <span class="text-danger">*</span>
+            </label>
+            <div class="relative flex items-center">
+              <input
+                type="number"
+                id="tarif_pajak"
+                name="tarif_pajak"
+                required
+                min="0"
+                max="100"
+                value="{{ form.tarif_pajak.data if form.tarif_pajak.data is not none else pengaturan.tarif_pajak }}"
+                class="block w-full px-3.5 py-2.5 pr-8 rounded-lg border {% if form.tarif_pajak.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm font-mono text-right focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <span class="absolute right-3 text-sm font-bold text-text-muted">%</span>
+            </div>
+            <p class="mt-1 text-xs text-text-muted">Perubahan tarif pajak hanya berlaku untuk transaksi baru</p>
+            {% if form.tarif_pajak.errors %}
+              {% for error in form.tarif_pajak.errors %}
+                <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+              {% endfor %}
+            {% endif %}
+          </div>
+
+          <div>
+            <label for="ambang_stok_menipis" class="block text-sm font-semibold text-text mb-1">
+              Ambang Stok Menipis <span class="text-danger">*</span>
+            </label>
+            <input
+              type="number"
+              id="ambang_stok_menipis"
+              name="ambang_stok_menipis"
+              required
+              min="0"
+              value="{{ form.ambang_stok_menipis.data if form.ambang_stok_menipis.data is not none else pengaturan.ambang_stok_menipis }}"
+              class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.ambang_stok_menipis.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm font-mono text-right focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p class="mt-1 text-xs text-text-muted">Produk dengan stok ≤ batas ini akan diberi label 'Menipis'</p>
+            {% if form.ambang_stok_menipis.errors %}
+              {% for error in form.ambang_stok_menipis.errors %}
+                <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="pt-4 flex items-center justify-end border-t border-border">
+        <button
+          type="submit"
+          id="btnSimpan"
+          class="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
+        >
+          <span id="btnText">Simpan pengaturan</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const form = document.getElementById('formPengaturan');
+  const btn = document.getElementById('btnSimpan');
+  const btnText = document.getElementById('btnText');
+  if (form && btn) {
+    form.addEventListener('submit', () => {
+      btn.disabled = true;
+      btnText.textContent = 'Menyimpan…';
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Ubah Pengguna - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-6 md:p-8 max-w-2xl">
+  <div class="mb-6">
+    <div class="flex items-center gap-2 text-xs text-text-muted mb-1">
+      <a href="{{ url_for('pengguna.index') }}" class="hover:underline">Manajemen Pengguna</a>
+      <span>/</span>
+      <span>Ubah ({{ user.username }})</span>
+    </div>
+    <h1 class="text-2xl font-bold text-text">Ubah Pengguna</h1>
+    <p class="text-sm text-text-muted mt-0.5">Perbarui informasi profil atau peran akun</p>
+  </div>
+
+  <div class="bg-surface rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
+    <form method="POST" action="{{ url_for('pengguna.ubah', user_id=user.id) }}" class="space-y-5" id="formPengguna">
+      {{ form.hidden_tag() }}
+
+      <!-- Nama Lengkap -->
+      <div>
+        <label for="nama" class="block text-sm font-semibold text-text mb-1">
+          Nama Lengkap <span class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          id="nama"
+          name="nama"
+          required
+          value="{{ form.nama.data or user.nama }}"
+          class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.nama.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        {% if form.nama.errors %}
+          {% for error in form.nama.errors %}
+            <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Username (Readonly AC-16) -->
+      <div>
+        <label for="username" class="block text-sm font-semibold text-text mb-1">
+          Username
+        </label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          readonly
+          value="{{ user.username }}"
+          class="block w-full px-3.5 py-2.5 rounded-lg border border-border bg-surface-subdued text-text-muted text-sm font-mono cursor-not-allowed"
+        />
+        <p class="mt-1 text-xs text-text-muted">Username tidak dapat diubah setelah dibuat</p>
+      </div>
+
+      <!-- Peran -->
+      <div>
+        <label class="block text-sm font-semibold text-text mb-2">
+          Peran <span class="text-danger">*</span>
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="flex items-center gap-3 p-3.5 rounded-xl border border-border cursor-pointer hover:bg-surface-subdued transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-container/40">
+            <input type="radio" name="peran" value="kasir" {% if (form.peran.data or user.peran) == 'kasir' %}checked{% endif %} class="text-primary focus:ring-primary"/>
+            <div>
+              <p class="text-sm font-semibold text-text">Kasir</p>
+              <p class="text-xs text-text-muted">Akses kasir POS dan riwayat order</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3.5 rounded-xl border border-border cursor-pointer hover:bg-surface-subdued transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-container/40">
+            <input type="radio" name="peran" value="admin" {% if (form.peran.data or user.peran) == 'admin' %}checked{% endif %} class="text-primary focus:ring-primary"/>
+            <div>
+              <p class="text-sm font-semibold text-text">Admin</p>
+              <p class="text-xs text-text-muted">Akses penuh seluruh sistem</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Status Aktif -->
+      <div class="pt-2">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="aktif"
+            value="y"
+            {% if (form.is_submitted() and form.aktif.data) or (not form.is_submitted() and user.aktif) %}checked{% endif %}
+            class="w-4 h-4 rounded text-primary focus:ring-primary border-border"
+          />
+          <span class="text-sm font-semibold text-text">Akun aktif</span>
+        </label>
+      </div>
+
+      <!-- Form Buttons -->
+      <div class="pt-4 flex items-center justify-end gap-3 border-t border-border">
+        <a href="{{ url_for('pengguna.index') }}" class="px-5 py-2.5 rounded-lg border border-border text-sm font-semibold text-text hover:bg-surface-subdued transition-colors">
+          Batal
+        </a>
+        <button
+          type="submit"
+          id="btnSimpan"
+          class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
+        >
+          <span id="btnText">Simpan pengguna</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const form = document.getElementById('formPengguna');
+  const btn = document.getElementById('btnSimpan');
+  const btnText = document.getElementById('btnText');
+  if (form && btn) {
+    form.addEventListener('submit', () => {
+      btn.disabled = true;
+      btnText.textContent = 'Menyimpan…';
+    });
+  }
+</script>
+{% endblock %}

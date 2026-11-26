@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html class="h-full bg-background" lang="id">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta name="csrf-token" content="{{ csrf_token() }}"/>
+  <title>{% block title %}SMK Mart POS{% endblock %}</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+
+  <!-- Google Material Symbols Outlined -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+  <!-- Tailwind CSS CDN with plugins -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+  <!-- Tailwind Config Modern Vocational POS -->
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#4F46E5",
+            "primary-hover": "#4338CA",
+            "primary-container": "#EEF2FF",
+            secondary: "#10B981",
+            "secondary-hover": "#059669",
+            "secondary-container": "#ECFDF5",
+            warning: "#F59E0B",
+            "warning-container": "#FFFBEB",
+            danger: "#EF4444",
+            "danger-container": "#FEF2F2",
+            surface: "#FFFFFF",
+            "surface-subdued": "#F1F5F9",
+            background: "#F8FAFC",
+            text: "#0F172A",
+            "text-muted": "#64748B",
+            border: "#E2E8F0",
+            "border-hover": "#CBD5E1",
+          },
+          fontFamily: {
+            sans: ["Plus Jakarta Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #0F172A;
+      background-color: #F8FAFC;
+    }
+    .font-mono-numeric {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full flex flex-col md:flex-row overflow-hidden">
+
+  <!-- Toast Notification Container (SPEC NFR-07 & design-system.md §6) -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none max-sm:top-4 max-sm:inset-x-4 max-sm:w-auto" aria-live="polite"></div>
+
+  {% if current_user.is_authenticated %}
+  <!-- Backdrop Drawer Mobile -->
+  <div id="sidebar-backdrop" onclick="closeSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 hidden md:hidden transition-opacity"></div>
+
+  <!-- Sidebar Navigasi: Off-canvas di Mobile (< md) & Fixed di Desktop (>= md) -->
+  <aside id="main-sidebar" class="fixed inset-y-0 left-0 w-64 bg-surface border-r border-border flex flex-col justify-between shrink-0 h-full z-50 transform -translate-x-full transition-transform duration-300 md:relative md:translate-x-0 md:z-20">
+    <div class="flex flex-col h-full overflow-y-auto">
+      <!-- App Brand Logo & Mobile Close Button -->
+      <div class="h-16 flex items-center justify-between px-6 border-b border-border">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white shadow-sm">
+            <span class="material-symbols-outlined text-[22px]">point_of_sale</span>
+          </div>
+          <div>
+            <h1 class="text-base font-bold text-text leading-tight">SMK Mart POS</h1>
+            <p class="text-xs text-text-muted">Aplikasi Kasir Praktik</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeSidebar()" class="md:hidden p-1.5 rounded-lg text-text-muted hover:bg-surface-subdued" title="Tutup Menu">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="flex-1 px-3 py-4 space-y-1">
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('dashboard.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('dashboard') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">dashboard</span>
+          Dashboard
+        </a>
+        {% endif %}
+
+        <a href="{{ url_for('pos.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('pos') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">storefront</span>
+          Kasir (POS)
+        </a>
+
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('order.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('order') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+          Riwayat Order
+        </a>
+
+        <a href="{{ url_for('produk.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('produk') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">inventory_2</span>
+          Master Produk
+        </a>
+
+        <a href="{{ url_for('laporan.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint == 'laporan.index' %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">assessment</span>
+          Laporan & Ekspor
+        </a>
+
+        <a href="{{ url_for('laporan.kartu_stok') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint == 'laporan.kartu_stok' %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">history</span>
+          Kartu Stok
+        </a>
+
+        <a href="{{ url_for('pelanggan.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('pelanggan') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">groups</span>
+          Pelanggan
+        </a>
+
+        <a href="{{ url_for('metode_bayar.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('metode_bayar') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">payments</span>
+          Metode Bayar
+        </a>
+
+        <a href="{{ url_for('pengguna.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('pengguna') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">badge</span>
+          Manajemen Pengguna
+        </a>
+
+        <a href="{{ url_for('pengaturan.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('pengaturan') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">settings</span>
+          Pengaturan Toko
+        </a>
+        {% else %}
+        <a href="{{ url_for('order.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('order') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+          Riwayat Order
+        </a>
+        <a href="{{ url_for('pelanggan.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('pelanggan') %}bg-primary-container text-primary font-semibold{% else %}text-text-muted hover:bg-surface-subdued hover:text-text{% endif %}">
+          <span class="material-symbols-outlined text-[20px]">groups</span>
+          Pelanggan
+        </a>
+        {% endif %}
+      </nav>
+
+      <!-- User Profile & Logout Bottom Strip -->
+      <div class="p-3 border-t border-border">
+        <div class="flex items-center justify-between p-2 rounded-xl bg-surface-subdued">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary font-bold flex items-center justify-center shrink-0 text-sm">
+              {{ current_user.nama[0] | upper }}
+            </div>
+            <div class="truncate">
+              <p class="text-xs font-semibold text-text truncate">{{ current_user.nama }}</p>
+              <p class="text-[11px] text-text-muted capitalize">Peran: {{ current_user.peran }}</p>
+            </div>
+          </div>
+          <form method="POST" action="{{ url_for('auth.logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type="submit" class="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger-container transition-colors" title="Keluar">
+              <span class="material-symbols-outlined text-[20px]">logout</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Top App Bar Khusus Mobile (< md) -->
+  <header class="h-14 bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 md:hidden z-30 shadow-xs">
+    <div class="flex items-center gap-2">
+      <button type="button" onclick="openSidebar()" class="p-2 -ml-2 rounded-xl text-text hover:bg-surface-subdued" title="Buka Menu">
+        <span class="material-symbols-outlined text-[24px]">menu</span>
+      </button>
+      <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+        <span class="font-bold text-sm text-text">SMK Mart POS</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-semibold text-text px-2 py-0.5 rounded-md bg-surface-subdued border border-border">
+        {{ current_user.nama.split()[0] }} ({{ current_user.peran }})
+      </span>
+    </div>
+  </header>
+  {% endif %}
+
+  <!-- Main Content Wrapper -->
+  <main class="flex-1 flex flex-col h-full min-w-0 overflow-y-auto {% if current_user.is_authenticated %}pb-16 md:pb-0{% endif %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% if current_user.is_authenticated %}
+  <!-- Bottom Navigation Bar Khusus Mobile (< md) -->
+  <nav class="fixed bottom-0 inset-x-0 h-16 bg-surface/95 backdrop-blur-md border-t border-border flex items-center justify-around z-30 md:hidden shadow-lg select-none">
+    {% if current_user.is_admin %}
+    <a href="{{ url_for('dashboard.index') }}" class="flex flex-col items-center justify-center flex-1 py-1 {% if request.endpoint and request.endpoint.startswith('dashboard') %}text-primary font-bold{% else %}text-text-muted hover:text-text{% endif %}">
+      <span class="material-symbols-outlined text-[20px]">dashboard</span>
+      <span class="text-[10px] mt-0.5">Dashboard</span>
+    </a>
+    <a href="{{ url_for('pos.index') }}" class="flex flex-col items-center justify-center flex-1 py-1 {% if request.endpoint and request.endpoint.startswith('pos') %}text-primary font-bold{% else %}text-text-muted hover:text-text{% endif %}">
+      <span class="material-symbols-outlined text-[20px]">storefront</span>
+      <span class="text-[10px] mt-0.5">Kasir</span>
+    </a>
+    <a href="{{ url_for('order.index') }}" class="flex flex-col items-center justify-center flex-1 py-1 {% if request.endpoint and request.endpoint.startswith('order') %}text-primary font-bold{% else %}text-text-muted hover:text-text{% endif %}">
+      <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+      <span class="text-[10px] mt-0.5">Riwayat</span>
+    </a>
+    <a href="{{ url_for('produk.index') }}" class="flex flex-col items-center justify-center flex-1 py-1 {% if request.endpoint and request.endpoint.startswith('produk') %}text-primary font-bold{% else %}text-text-muted hover:text-text{% endif %}">
+      <span class="material-symbols-outlined text-[20px]">inventory_2</span>
+      <span class="text-[10px] mt-0.5">Produk</span>
+    </a>
+    <button type="button" onclick="openSidebar()" class="flex flex-col items-center justify-center flex-1 py-1 text-text-muted hover:text-text">
+      <span class="material-symbols-outlined text-[20px]">more_horiz</span>
+      <span class="text-[10px] mt-0.5">Menu</span>
+    </button>
+    {% else %}
+    <a href="{{ url_for('pos.index') }}" class="flex flex-col items-center justify-center flex-1 py-1 {% if request.endpoint and request.endpoint.startswith('pos') %}text-primary font-bold{% else %}text-text-muted hover:text-text{% endif %}">
+      <span class="material-symbols-outlined text-[20px]">storefront</span>
+      <span class="text-[10px] mt-0.5">Kasir POS</span>
+    </a>
+    <a href="{{ url_for('order.index') }}" class="flex flex-col items-center justify-center flex-1 py-1 {% if request.endpoint and request.endpoint.startswith('order') %}text-primary font-bold{% else %}text-text-muted hover:text-text{% endif %}">
+      <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+      <span class="text-[10px] mt-0.5">Riwayat</span>
+    </a>
+    <a href="{{ url_for('pelanggan.index') }}" class="flex flex-col items-center justify-center flex-1 py-1 {% if request.endpoint and request.endpoint.startswith('pelanggan') %}text-primary font-bold{% else %}text-text-muted hover:text-text{% endif %}">
+      <span class="material-symbols-outlined text-[20px]">groups</span>
+      <span class="text-[10px] mt-0.5">Pelanggan</span>
+    </a>
+    <button type="button" onclick="openSidebar()" class="flex flex-col items-center justify-center flex-1 py-1 text-text-muted hover:text-text">
+      <span class="material-symbols-outlined text-[20px]">menu</span>
+      <span class="text-[10px] mt-0.5">Menu</span>
+    </button>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  <!-- JavaScript Toast & Interactivity Support -->
+  <script>
+    // Off-canvas Sidebar Mobile Support
+    function openSidebar() {
+      const sidebar = document.getElementById('main-sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      if (sidebar && backdrop) {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      }
+    }
+    function closeSidebar() {
+      const sidebar = document.getElementById('main-sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      if (sidebar && backdrop) {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+    // Sistem Notifikasi Toast Sesuai design-system.md §6
+    window.showToast = function(message, type = 'success', title = '') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = 'flex items-start gap-3 p-4 rounded-xl border shadow-lg bg-surface transition-all duration-300 transform translate-y-[-10px] opacity-0 pointer-events-auto';
+      toast.setAttribute('role', 'alert');
+
+      let icon = 'check_circle';
+      let iconColor = 'text-secondary';
+      let borderColor = 'border-emerald-200';
+      let defaultTitle = 'Berhasil';
+
+      if (type === 'danger' || type === 'error') {
+        icon = 'error';
+        iconColor = 'text-danger';
+        borderColor = 'border-red-200';
+        defaultTitle = 'Gagal';
+      } else if (type === 'warning') {
+        icon = 'warning';
+        iconColor = 'text-warning';
+        borderColor = 'border-amber-200';
+        defaultTitle = 'Peringatan';
+      } else if (type === 'info') {
+        icon = 'info';
+        iconColor = 'text-primary';
+        borderColor = 'border-indigo-200';
+        defaultTitle = 'Informasi';
+      }
+
+      toast.classList.add(borderColor);
+
+      toast.innerHTML = `
+        <span class="material-symbols-outlined text-[22px] shrink-0 mt-0.5 ${iconColor}">${icon}</span>
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-text">${title || defaultTitle}</p>
+          <p class="text-xs text-text-muted mt-0.5">${message}</p>
+        </div>
+        <button type="button" class="text-text-muted hover:text-text p-1 rounded-lg transition-colors" aria-label="Tutup notifikasi">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      `;
+
+      container.appendChild(toast);
+
+      // Animasi Masuk
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-[-10px]', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+      });
+
+      let timeoutId;
+      const removeToast = () => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-[-8px]', 'opacity-0');
+        setTimeout(() => toast.remove(), 180);
+      };
+
+      const startTimer = () => {
+        timeoutId = setTimeout(removeToast, 4000);
+      };
+
+      const stopTimer = () => {
+        clearTimeout(timeoutId);
+      };
+
+      startTimer();
+
+      // Pause on hover
+      toast.addEventListener('mouseenter', stopTimer);
+      toast.addEventListener('mouseleave', startTimer);
+
+      // Close button
+      toast.querySelector('button').addEventListener('click', () => {
+        stopTimer();
+        removeToast();
+      });
+    };
+
+    // Muat pesan flash dari Flask
+    document.addEventListener('DOMContentLoaded', () => {
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            window.showToast("{{ message }}", "{{ category }}");
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    });
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Ubah Metode Bayar - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-6 md:p-8 max-w-xl">
+  <div class="mb-6">
+    <div class="flex items-center gap-2 text-xs text-text-muted mb-1">
+      <a href="{{ url_for('metode_bayar.index') }}" class="hover:underline">Metode Pembayaran</a>
+      <span>/</span>
+      <span>Ubah ({{ metode.nama }})</span>
+    </div>
+    <h1 class="text-2xl font-bold text-text">Ubah Metode Bayar</h1>
+    <p class="text-sm text-text-muted mt-0.5">Perbarui nama, jenis, atau status keaktifan metode pembayaran</p>
+  </div>
+
+  <div class="bg-surface rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
+    <form method="POST" action="{{ url_for('metode_bayar.ubah', metode_id=metode.id) }}" class="space-y-5" id="formMetode">
+      {{ form.hidden_tag() }}
+
+      <!-- Nama Metode -->
+      <div>
+        <label for="nama" class="block text-sm font-semibold text-text mb-1">
+          Nama Metode Bayar <span class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          id="nama"
+          name="nama"
+          required
+          value="{{ form.nama.data or metode.nama }}"
+          class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.nama.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        {% if form.nama.errors %}
+          {% for error in form.nama.errors %}
+            <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Jenis Pembayaran -->
+      <div>
+        <label for="jenis" class="block text-sm font-semibold text-text mb-1">
+          Jenis Pembayaran <span class="text-danger">*</span>
+        </label>
+        <select
+          id="jenis"
+          name="jenis"
+          class="block w-full pl-3.5 pr-9 py-2.5 rounded-lg border border-border focus:border-primary bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+        >
+          <option value="tunai" {% if (form.jenis.data or metode.jenis) == 'tunai' %}selected{% endif %}>Tunai (Menghitung Uang Diterima & Kembalian)</option>
+          <option value="non_tunai" {% if (form.jenis.data or metode.jenis) == 'non_tunai' %}selected{% endif %}>Non-Tunai (Transfer Bank / QRIS Simulasi)</option>
+        </select>
+      </div>
+
+      <!-- Status Aktif -->
+      <div class="pt-2">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="aktif"
+            value="y"
+            {% if (form.is_submitted() and form.aktif.data) or (not form.is_submitted() and metode.aktif) %}checked{% endif %}
+            class="w-4 h-4 rounded text-primary focus:ring-primary border-border"
+          />
+          <div>
+            <span class="text-sm font-semibold text-text">Metode aktif</span>
+            <p class="text-xs text-text-muted">Nonaktifkan bila metode ini sedang tidak menerima transaksi</p>
+          </div>
+        </label>
+      </div>
+
+      <!-- Form Buttons -->
+      <div class="pt-4 flex items-center justify-end gap-3 border-t border-border">
+        <a href="{{ url_for('metode_bayar.index') }}" class="px-5 py-2.5 rounded-lg border border-border text-sm font-semibold text-text hover:bg-surface-subdued transition-colors">
+          Batal
+        </a>
+        <button
+          type="submit"
+          id="btnSimpan"
+          class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
+        >
+          <span id="btnText">Simpan metode bayar</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const form = document.getElementById('formMetode');
+  const btn = document.getElementById('btnSimpan');
+  const btnText = document.getElementById('btnText');
+  if (form && btn) {
+    form.addEventListener('submit', () => {
+      btn.disabled = true;
+      btnText.textContent = 'Menyimpan…';
+    });
+  }
+</script>
+{% endblock %}

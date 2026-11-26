@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Manajemen Pengguna - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-6 md:p-8 space-y-6">
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-text">Manajemen Pengguna</h1>
+      <p class="text-sm text-text-muted mt-0.5">Kelola data akun kasir dan administrator sistem</p>
+    </div>
+    <div>
+      <a href="{{ url_for('pengguna.tambah') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all">
+        <span class="material-symbols-outlined text-[20px]">person_add</span>
+        Tambah Pengguna
+      </a>
+    </div>
+  </div>
+
+  <!-- Users Table Card -->
+  <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr class="bg-surface-subdued border-b border-border text-xs uppercase font-semibold text-text-muted">
+            <th class="py-3.5 px-6">Nama Pengguna</th>
+            <th class="py-3.5 px-6">Username</th>
+            <th class="py-3.5 px-6">Peran</th>
+            <th class="py-3.5 px-6">Status</th>
+            <th class="py-3.5 px-6 text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for user in users %}
+          <tr class="hover:bg-surface-subdued/50 transition-colors">
+            <td class="py-4 px-6 font-semibold text-text flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-primary-container text-primary font-bold flex items-center justify-center shrink-0 text-sm">
+                {{ user.nama[0] | upper }}
+              </div>
+              <span>{{ user.nama }}</span>
+            </td>
+            <td class="py-4 px-6 font-mono text-text-muted">{{ user.username }}</td>
+            <td class="py-4 px-6">
+              {% if user.is_admin %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary-container text-primary">
+                  Admin
+                </span>
+              {% else %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                  Kasir
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-4 px-6">
+              {% if user.aktif %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-secondary-container text-secondary-hover">
+                  <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  Aktif
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-danger-container text-danger">
+                  <span class="w-1.5 h-1.5 rounded-full bg-danger"></span>
+                  Nonaktif
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-4 px-6 text-right space-x-2">
+              <button
+                type="button"
+                onclick="openResetModal('{{ user.id }}', '{{ user.nama }}')"
+                class="inline-flex items-center px-2.5 py-1.5 rounded-lg border border-border text-xs font-medium text-text-muted hover:text-text hover:bg-surface-subdued transition-colors"
+                title="Ganti Password"
+              >
+                Ganti Password
+              </button>
+              <a
+                href="{{ url_for('pengguna.ubah', user_id=user.id) }}"
+                class="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-surface-subdued hover:bg-primary-container text-xs font-medium text-text hover:text-primary transition-colors"
+              >
+                Ubah
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Reset Password -->
+<div id="resetModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+  <div class="bg-surface rounded-2xl border border-border max-w-sm w-full p-6 shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-base font-bold text-text">Ganti Password</h3>
+      <button type="button" onclick="closeResetModal()" class="text-text-muted hover:text-text p-1 rounded-lg">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+    <form id="resetForm" method="POST" action="">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <p class="text-xs text-text-muted mb-4">
+        Masukkan password baru untuk pengguna <strong id="resetUserName" class="text-text"></strong>. Minimal 8 karakter.
+      </p>
+      <div class="mb-5">
+        <label for="password_baru" class="block text-xs font-semibold text-text mb-1">Password Baru <span class="text-danger">*</span></label>
+        <input
+          type="password"
+          id="password_baru"
+          name="password_baru"
+          required
+          minlength="8"
+          placeholder="Minimal 8 karakter"
+          class="block w-full px-3.5 py-2 rounded-lg border border-border focus:border-primary focus:ring-primary/20 text-sm bg-surface text-text"
+        />
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeResetModal()" class="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-text hover:bg-surface-subdued">
+          Batal
+        </button>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-semibold">
+          Simpan Password
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function openResetModal(userId, userName) {
+    const modal = document.getElementById('resetModal');
+    const form = document.getElementById('resetForm');
+    const nameSpan = document.getElementById('resetUserName');
+    nameSpan.textContent = userName;
+    form.action = `/pengguna/${userId}/reset-password`;
+    modal.classList.remove('hidden');
+    document.getElementById('password_baru').focus();
+  }
+
+  function closeResetModal() {
+    const modal = document.getElementById('resetModal');
+    modal.classList.add('hidden');
+    document.getElementById('password_baru').value = '';
+  }
+</script>
+{% endblock %}

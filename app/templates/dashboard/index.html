@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Admin - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-6 lg:p-8 space-y-6 max-w-[1400px] mx-auto w-full">
+  <!-- Top Header Dashboard -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-border">
+    <div>
+      <div class="flex items-center gap-2 text-text-muted text-xs mb-1">
+        <span>Admin Panel</span>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span class="text-primary font-bold">Dashboard</span>
+      </div>
+      <h1 class="text-2xl font-extrabold text-text tracking-tight">Dashboard Ringkasan Penjualan</h1>
+      <p class="text-xs text-text-muted mt-0.5">Pantau omzet kasir, tren penjualan, dan ketersediaan stok lab secara real-time</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{{ url_for('order.index') }}" class="px-3.5 py-2 rounded-xl border border-border bg-surface text-text hover:bg-surface-subdued text-xs font-bold transition-all shadow-xs flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[18px]">receipt_long</span>
+        Lihat Semua Order
+      </a>
+      <a href="{{ url_for('pos.index') }}" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold transition-all shadow-sm active:scale-95 flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[18px]">point_of_sale</span>
+        Buka POS Kasir
+      </a>
+    </div>
+  </div>
+
+  <!-- 1. Alert Banner Pembatalan Menunggu (AC-105) -->
+  {% if pengajuan_batal_count > 0 %}
+  <div class="p-4 rounded-2xl bg-warning-container border-l-4 border-warning shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex items-center gap-3.5">
+      <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-warning shrink-0">
+        <span class="material-symbols-outlined text-[24px]">warning</span>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-amber-950 leading-snug">
+          ⚠ {{ pengajuan_batal_count }} pengajuan pembatalan menunggu persetujuan
+        </h2>
+        <p class="text-xs text-amber-800 mt-0.5">
+          Ada nota transaksi yang diajukan batal oleh kasir. Periksa cek fisik barang sebelum konfirmasi.
+        </p>
+      </div>
+    </div>
+    <div class="shrink-0">
+      <a 
+        href="{{ url_for('order.index', status='pengajuan_batal') }}" 
+        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-warning hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs active:scale-95"
+      >
+        <span>Lihat pengajuan</span>
+        <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 2. Tiga Kartu Metrik Utama (AC-100, AC-104, UX-02) -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <!-- Card 1: Omzet Hari Ini -->
+    <div class="p-5 rounded-2xl bg-surface border border-border shadow-xs flex flex-col justify-between hover:border-primary/40 transition-all">
+      <div class="flex items-start justify-between">
+        <div>
+          <span class="text-[11px] font-bold text-text-muted uppercase tracking-wider">Omzet Hari Ini</span>
+          <div class="mt-2 text-2xl font-extrabold font-mono-numeric text-text">
+            {{ omzet_hari_ini | rupiah }}
+          </div>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-primary-container text-primary flex items-center justify-center">
+          <span class="material-symbols-outlined text-[26px]">payments</span>
+        </div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-border/60 text-xs text-text-muted">
+        {% if jumlah_order_hari_ini > 0 %}
+        <span class="text-secondary font-bold font-mono-numeric inline-flex items-center gap-0.5">
+          <span class="material-symbols-outlined text-[16px]">trending_up</span>
+          {{ jumlah_order_hari_ini }} transaksi selesai
+        </span>
+        {% else %}
+        <span>Belum ada penjualan hari ini. Omzet muncul setelah ada order di POS.</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Card 2: Order Hari Ini -->
+    <div class="p-5 rounded-2xl bg-surface border border-border shadow-xs flex flex-col justify-between hover:border-primary/40 transition-all">
+      <div class="flex items-start justify-between">
+        <div>
+          <span class="text-[11px] font-bold text-text-muted uppercase tracking-wider">Order Hari Ini</span>
+          <div class="mt-2 text-2xl font-extrabold font-mono-numeric text-text">
+            {{ jumlah_order_hari_ini }} <span class="text-sm font-normal text-text-muted">transaksi</span>
+          </div>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-secondary-container text-secondary flex items-center justify-center">
+          <span class="material-symbols-outlined text-[26px]">receipt_long</span>
+        </div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-border/60 text-xs text-text-muted">
+        {% if jumlah_order_hari_ini > 0 %}
+        <span class="text-secondary font-semibold inline-flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-secondary"></span>
+          Aktif bertransaksi
+        </span>
+        {% else %}
+        <span>0 transaksi hari ini</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Card 3: Rata-rata Order -->
+    <div class="p-5 rounded-2xl bg-surface border border-border shadow-xs flex flex-col justify-between hover:border-primary/40 transition-all">
+      <div class="flex items-start justify-between">
+        <div>
+          <span class="text-[11px] font-bold text-text-muted uppercase tracking-wider">Rata-rata Order</span>
+          <div class="mt-2 text-2xl font-extrabold font-mono-numeric text-text">
+            {{ rata_rata_order | rupiah }}
+          </div>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-slate-100 text-text flex items-center justify-center">
+          <span class="material-symbols-outlined text-[26px]">shopping_basket</span>
+        </div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-border/60 text-xs text-text-muted">
+        <span>Rata-rata nilai belanja per nota hari ini</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Grafik Tren Omzet 7 Hari Terakhir (AC-102, UX-02) -->
+  <div class="p-6 rounded-2xl bg-surface border border-border shadow-xs space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-2">
+      <div>
+        <h3 class="text-sm font-bold text-text">Grafik Omzet 7 Hari Terakhir</h3>
+        <p class="text-xs text-text-muted">Tren omzet transaksi kasir toko sekolah (WIB)</p>
+      </div>
+      <div class="flex items-center gap-4 text-xs">
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded bg-primary inline-block"></span>
+          <span class="text-text-muted font-medium">Omzet Harian</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-3 h-3 rounded bg-secondary inline-block"></span>
+          <span class="text-text-muted font-medium">Hari Ini</span>
+        </div>
+      </div>
+    </div>
+
+    {% if total_omzet_7_hari == 0 %}
+    <!-- State Kosong Grafik (UX-02) -->
+    <div class="py-12 flex flex-col items-center justify-center text-center">
+      <span class="material-symbols-outlined text-[36px] text-text-muted/60 mb-2">bar_chart</span>
+      <p class="text-xs text-text-muted font-medium">Belum ada penjualan.</p>
+    </div>
+    {% else %}
+    <!-- Visual Bar Chart -->
+    <div class="pt-6 pb-2">
+      <div class="h-48 w-full flex items-end justify-between gap-2 sm:gap-6 px-4">
+        {% for g in grafik_7_hari %}
+        <div class="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
+          <span class="font-mono-numeric text-[11px] font-bold {% if g.is_today %}text-primary{% else %}text-text-muted opacity-0 group-hover:opacity-100{% endif %} transition-opacity">
+            {{ g.omzet | rupiah }}
+          </span>
+          <div 
+            class="w-full max-w-[48px] rounded-t-xl transition-all duration-300 {% if g.is_today %}bg-secondary ring-2 ring-secondary/30{% else %}bg-primary hover:bg-primary-hover{% endif %}"
+            style="height: {{ [g.height_pct, 4] | max }}%; min-height: 6px;"
+          ></div>
+          <span class="text-xs font-semibold {% if g.is_today %}text-secondary font-bold{% else %}text-text-muted{% endif %}">
+            {{ g.label }}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 4. Dua Kolom Berdampingan: Top 5 Produk & Stok Menipis (AC-102, AC-103, UX-02) -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Kolom Kiri: 5 Produk Terlaris (30 Hari) -->
+    <div class="p-6 rounded-2xl bg-surface border border-border shadow-xs flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between pb-3 border-b border-border">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[20px]">stars</span>
+            <h3 class="text-sm font-bold text-text">5 Produk Terlaris (30 Hari)</h3>
+          </div>
+          <span class="text-[11px] text-text-muted font-medium">Berdasarkan unit terjual</span>
+        </div>
+
+        {% if not top_products %}
+        <!-- State Kosong Produk Terlaris (UX-02) -->
+        <div class="py-10 flex flex-col items-center justify-center text-center">
+          <span class="material-symbols-outlined text-[32px] text-text-muted/60 mb-2">shopping_basket</span>
+          <p class="text-xs text-text-muted">Belum ada produk terjual.</p>
+        </div>
+        {% else %}
+        <div class="mt-3 divide-y divide-border">
+          {% for p in top_products %}
+          <div class="py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-6 h-6 rounded-full {% if loop.index == 1 %}bg-primary text-white{% else %}bg-surface-subdued text-text font-bold{% endif %} text-xs font-mono font-bold flex items-center justify-center">
+                {{ loop.index }}
+              </span>
+              <div>
+                <p class="text-xs font-bold text-text">{{ p.nama }}</p>
+                <p class="text-[11px] text-text-muted">Omzet: {{ p.omzet | rupiah }}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="font-mono-numeric text-xs font-bold text-primary">{{ p.terjual }} terjual</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-border text-right">
+        <a href="{{ url_for('produk.index') }}" class="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1">
+          Lihat semua produk
+          <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Kolom Kanan: Daftar Stok Menipis -->
+    <div class="p-6 rounded-2xl bg-surface border border-border shadow-xs flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between pb-3 border-b border-border">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-warning text-[20px]">inventory_2</span>
+            <h3 class="text-sm font-bold text-text">Daftar Stok Menipis</h3>
+          </div>
+          <span class="px-2 py-0.5 rounded-full bg-warning-container text-warning text-[10px] font-bold">Ambang &le; {{ ambang }}</span>
+        </div>
+
+        {% if not stok_menipis %}
+        <!-- State Kosong Stok Menipis (UX-02) -->
+        <div class="py-10 flex flex-col items-center justify-center text-center">
+          <span class="material-symbols-outlined text-[32px] text-secondary mb-2">check_circle</span>
+          <p class="text-xs text-text font-semibold">Semua stok aman.</p>
+          <p class="text-[11px] text-text-muted mt-0.5">Tidak ada produk dengan stok di bawah ambang batas.</p>
+        </div>
+        {% else %}
+        <div class="mt-3 divide-y divide-border">
+          {% for p in stok_menipis %}
+          <div class="py-3 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-text">{{ p.nama }}</p>
+              <p class="text-[11px] font-mono text-text-muted">{{ p.kode }} {% if p.kategori %}• {{ p.kategori }}{% endif %}</p>
+            </div>
+            <div class="text-right">
+              {% if p.stok <= 0 %}
+              <span class="px-2 py-0.5 rounded-full bg-danger-container text-danger text-[11px] font-bold">Habis (0)</span>
+              {% else %}
+              <span class="px-2 py-0.5 rounded-full bg-warning-container text-warning text-[11px] font-bold">Sisa {{ p.stok }}</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-border text-right">
+        <a href="{{ url_for('produk.index') }}" class="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1">
+          Kelola stok di Master Produk
+          <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 5 Order Terbaru -->
+  <div class="p-6 rounded-2xl bg-surface border border-border shadow-xs space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-border">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[20px]">history</span>
+        <h3 class="text-sm font-bold text-text">Transaksi Terbaru</h3>
+      </div>
+      <a href="{{ url_for('order.index') }}" class="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1">
+        Lihat semua order
+        <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+      </a>
+    </div>
+
+    {% if not order_terbaru %}
+    <div class="py-8 text-center text-xs text-text-muted">
+      Belum ada transaksi yang tercatat di sistem.
+    </div>
+    {% else %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-xs">
+        <thead>
+          <tr class="bg-slate-50 border-b border-border text-text-muted font-bold">
+            <th class="py-2.5 px-3">NOMOR ORDER</th>
+            <th class="py-2.5 px-3">WAKTU (WIB)</th>
+            <th class="py-2.5 px-3">KASIR</th>
+            <th class="py-2.5 px-3">PELANGGAN</th>
+            <th class="py-2.5 px-3 text-right">TOTAL</th>
+            <th class="py-2.5 px-3 text-center">STATUS</th>
+            <th class="py-2.5 px-3 text-center">STRUK</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for o in order_terbaru %}
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-2.5 px-3 font-mono font-bold text-primary">{{ o.nomor }}</td>
+            <td class="py-2.5 px-3 text-text-muted font-mono">{{ o.waktu | waktu_wib }}</td>
+            <td class="py-2.5 px-3 font-medium text-text">{{ o.kasir.nama }}</td>
+            <td class="py-2.5 px-3 text-text-muted">{{ o.pelanggan.nama }}</td>
+            <td class="py-2.5 px-3 text-right font-mono font-bold text-text">{{ o.total | rupiah }}</td>
+            <td class="py-2.5 px-3 text-center">
+              {% if o.status == 'selesai' %}
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-secondary">Selesai</span>
+              {% elif o.status == 'pengajuan_batal' %}
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-warning-container text-warning">Pengajuan Batal</span>
+              {% else %}
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-danger-container text-danger">Dibatalkan</span>
+              {% endif %}
+            </td>
+            <td class="py-2.5 px-3 text-center">
+              <a href="{{ url_for('pos.struk', order_id=o.id) }}" class="p-1 rounded text-text-muted hover:text-primary transition-colors" title="Buka Struk">
+                <span class="material-symbols-outlined text-[16px]">receipt</span>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

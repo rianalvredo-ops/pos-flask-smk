@@ -1,0 +1,870 @@
+{% extends "base.html" %}
+
+{% block title %}Riwayat Order - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col h-full overflow-hidden select-none">
+  <!-- Top Bar / Breadcrumb -->
+  <header class="bg-surface border-b border-border px-6 py-4 flex items-center justify-between shrink-0 shadow-xs z-10">
+    <div>
+      <div class="flex items-center gap-2 text-text-muted text-xs mb-1">
+        <span>Transaksi</span>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span class="text-primary font-bold">Riwayat Order</span>
+      </div>
+      <h1 class="text-xl font-bold text-text tracking-tight">Riwayat Order &amp; Penjualan</h1>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <a href="{{ url_for('pos.index') }}" class="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-[18px]">point_of_sale</span>
+        Buka POS
+      </a>
+    </div>
+  </header>
+
+  <!-- Workspace: Tabel Riwayat Order + Split Detail Panel -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- KOLOM KIRI: Daftar Order & Filter -->
+    <div class="flex-1 flex flex-col min-w-0 bg-background overflow-y-auto p-6 space-y-4">
+      <!-- 1. Banner Pengingat Pengajuan Batal (Khusus Admin, AC-105) -->
+      {% if current_user.is_admin and pengajuan_batal_count > 0 %}
+      <div class="bg-warning-container border-l-4 border-warning p-4 rounded-r-xl shadow-xs flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0 text-warning">
+            <span class="material-symbols-outlined text-[22px]">warning</span>
+          </div>
+          <div>
+            <p class="text-sm font-bold text-amber-950">
+              ⚠ {{ pengajuan_batal_count }} pengajuan pembatalan menunggu verifikasi Admin
+            </p>
+            <p class="text-xs text-amber-800 mt-0.5">
+              Periksa cek fisik barang retur sebelum mengonfirmasi pembatalan stok.
+            </p>
+          </div>
+        </div>
+        <a 
+          href="{{ url_for('order.index', status='pengajuan_batal') }}" 
+          class="shrink-0 px-3 py-1.5 bg-warning text-white hover:bg-amber-600 rounded-lg text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1"
+        >
+          Lihat pengajuan
+        </a>
+      </div>
+      {% endif %}
+
+      <!-- 2. Bilah Filter & Pencarian -->
+      <form method="GET" action="{{ url_for('order.index') }}" class="bg-surface border border-border rounded-2xl p-4 shadow-xs">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+          <!-- Rentang Tanggal Mulai -->
+          <div class="lg:col-span-3">
+            <label class="block text-[11px] font-bold text-text-muted uppercase mb-1">Tanggal Mulai</label>
+            <input 
+              type="date" 
+              name="tanggal_mulai" 
+              value="{{ start_date }}" 
+              class="w-full px-3 py-1.5 bg-surface-subdued border border-border rounded-lg text-xs font-medium text-text focus:outline-none focus:border-primary"
+            />
+          </div>
+
+          <!-- Rentang Tanggal Akhir -->
+          <div class="lg:col-span-3">
+            <label class="block text-[11px] font-bold text-text-muted uppercase mb-1">Tanggal Akhir</label>
+            <input 
+              type="date" 
+              name="tanggal_akhir" 
+              value="{{ end_date }}" 
+              class="w-full px-3 py-1.5 bg-surface-subdued border border-border rounded-lg text-xs font-medium text-text focus:outline-none focus:border-primary"
+            />
+          </div>
+
+          <!-- Status -->
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-bold text-text-muted uppercase mb-1">Status</label>
+            <select name="status" class="w-full pl-3 pr-8 py-1.5 bg-surface-subdued border border-border rounded-lg text-xs font-medium text-text focus:outline-none focus:border-primary cursor-pointer">
+              <option value="semua" {% if status == 'semua' %}selected{% endif %}>Semua Status</option>
+              <option value="selesai" {% if status == 'selesai' %}selected{% endif %}>Selesai</option>
+              <option value="pengajuan_batal" {% if status == 'pengajuan_batal' %}selected{% endif %}>Pengajuan Batal</option>
+              <option value="dibatalkan" {% if status == 'dibatalkan' %}selected{% endif %}>Dibatalkan</option>
+            </select>
+          </div>
+
+          <!-- Kasir (Admin Saja) -->
+          {% if current_user.is_admin %}
+          <div class="lg:col-span-2">
+            <label class="block text-[11px] font-bold text-text-muted uppercase mb-1">Petugas Kasir</label>
+            <select name="kasir_id" class="w-full pl-3 pr-8 py-1.5 bg-surface-subdued border border-border rounded-lg text-xs font-medium text-text focus:outline-none focus:border-primary cursor-pointer">
+              <option value="">Semua Kasir</option>
+              {% for k in kasir_list %}
+              <option value="{{ k.id }}" {% if kasir_id == k.id %}selected{% endif %}>{{ k.nama }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
+          <!-- Pencarian Nomor Order & Tombol -->
+          <div class="{% if current_user.is_admin %}lg:col-span-2{% else %}lg:col-span-4{% endif %} flex items-center gap-2">
+            <div class="flex-1">
+              <label class="block text-[11px] font-bold text-text-muted uppercase mb-1">Nomor Order</label>
+              <input 
+                type="text" 
+                name="q" 
+                value="{{ q }}" 
+                placeholder="POS-..." 
+                class="w-full px-3 py-1.5 bg-surface-subdued border border-border rounded-lg text-xs font-medium text-text focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div class="flex items-center gap-1.5 self-end">
+              <button type="submit" class="p-2 bg-primary text-white rounded-lg hover:bg-primary-hover shadow-xs active:scale-95 transition-all" title="Filter Riwayat">
+                <span class="material-symbols-outlined text-[18px]">filter_alt</span>
+              </button>
+              <a href="{{ url_for('order.index') }}" class="p-2 bg-surface-subdued text-text-muted border border-border rounded-lg hover:bg-slate-200 active:scale-95 transition-all" title="Atur ulang filter">
+                <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <!-- 3. Tabel Riwayat Order -->
+      <div class="bg-surface border border-border rounded-2xl shadow-xs overflow-hidden flex-1 flex flex-col justify-between">
+        {% if not orders %}
+        <!-- State Kosong (UX-06) -->
+        <div class="p-12 flex flex-col items-center justify-center text-center">
+          <div class="w-14 h-14 rounded-2xl bg-surface-subdued border border-border flex items-center justify-center text-text-muted mb-3">
+            <span class="material-symbols-outlined text-[28px]">receipt_long</span>
+          </div>
+          {% if q or status != 'semua' or kasir_id %}
+          <h3 class="text-sm font-bold text-text">Tidak ada order yang cocok</h3>
+          <p class="text-xs text-text-muted max-w-sm mt-1">Tidak ada order yang cocok dengan filter yang dipilih.</p>
+          {% else %}
+          <h3 class="text-sm font-bold text-text">Belum ada order hari ini</h3>
+          <p class="text-xs text-text-muted max-w-sm mt-1">Belum ada order hari ini. Order yang selesai di kasir akan tampil di sini.</p>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-border text-text-muted font-bold tracking-wider">
+                <th class="py-3 px-4">NOMOR ORDER</th>
+                <th class="py-3 px-4">WAKTU</th>
+                {% if current_user.is_admin %}
+                <th class="py-3 px-4">KASIR</th>
+                {% endif %}
+                <th class="py-3 px-4">PELANGGAN</th>
+                <th class="py-3 px-4">METODE</th>
+                <th class="py-3 px-4 text-right">TOTAL</th>
+                <th class="py-3 px-4 text-center">STATUS</th>
+                <th class="py-3 px-4 text-center">AKSI</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              {% for o in orders %}
+              <tr class="hover:bg-slate-50/80 transition-colors {% if o.status == 'pengajuan_batal' %}bg-warning-container/30 border-l-4 border-warning{% endif %}">
+                <td class="py-3 px-4 font-mono-numeric font-bold {% if o.status == 'dibatalkan' %}text-text-muted line-through{% else %}text-primary{% endif %}">
+                  {{ o.nomor }}
+                </td>
+                <td class="py-3 px-4 font-mono-numeric text-text-muted">{{ o.waktu | waktu_wib }}</td>
+                {% if current_user.is_admin %}
+                <td class="py-3 px-4 font-medium text-text">{{ o.kasir.nama }}</td>
+                {% endif %}
+                <td class="py-3 px-4 text-text-muted">{{ o.pelanggan.nama }}</td>
+                <td class="py-3 px-4">
+                  <span class="inline-flex items-center gap-1 font-medium text-text">
+                    {% if o.metode_bayar.jenis == 'tunai' %}
+                    <span class="material-symbols-outlined text-[16px] text-secondary">payments</span>
+                    {% elif 'qris' in o.metode_bayar.nama.lower() %}
+                    <span class="material-symbols-outlined text-[16px] text-primary">qr_code_2</span>
+                    {% else %}
+                    <span class="material-symbols-outlined text-[16px] text-text-muted">account_balance</span>
+                    {% endif %}
+                    {{ o.metode_bayar.nama }}
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-right font-mono-numeric font-bold {% if o.status == 'dibatalkan' %}text-text-muted line-through{% else %}text-text{% endif %}">
+                  {{ o.total | rupiah }}
+                </td>
+                <td class="py-3 px-4 text-center">
+                  {% if o.status == 'selesai' %}
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-secondary-container text-secondary border border-emerald-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                    Selesai
+                  </span>
+                  {% elif o.status == 'pengajuan_batal' %}
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-warning-container text-warning border border-amber-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></span>
+                    Pengajuan Batal
+                  </span>
+                  {% else %}
+                  <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-danger-container text-danger border border-red-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-danger"></span>
+                    Dibatalkan
+                  </span>
+                  {% endif %}
+                </td>
+                <td class="py-3 px-4 text-center">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <button 
+                      type="button" 
+                      onclick="showOrderDetail({{ o.id }})" 
+                      class="px-2.5 py-1 text-xs font-bold rounded-lg transition-colors {% if o.status == 'pengajuan_batal' and current_user.is_admin %}bg-warning text-white hover:bg-amber-600{% else %}bg-primary-container text-primary hover:bg-primary hover:text-white{% endif %}"
+                    >
+                      {% if o.status == 'pengajuan_batal' and current_user.is_admin %}
+                      Review Batal
+                      {% else %}
+                      Detail
+                      {% endif %}
+                    </button>
+                    <a 
+                      href="{{ url_for('pos.struk', order_id=o.id) }}" 
+                      class="p-1 text-text-muted hover:text-primary hover:bg-surface-subdued rounded transition-colors" 
+                      title="Cetak Struk"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">receipt</span>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginasi -->
+        {% if pagination.pages > 1 %}
+        <div class="px-4 py-3 bg-slate-50 border-t border-border flex items-center justify-between text-xs text-text-muted">
+          <span>Halaman {{ pagination.page }} dari {{ pagination.pages }} (Total {{ pagination.total }} order)</span>
+          <div class="flex items-center gap-1">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('order.index', page=pagination.prev_num, tanggal_mulai=start_date, tanggal_akhir=end_date, status=status, q=q, kasir_id=kasir_id) }}" class="p-1 rounded border border-border hover:bg-surface text-text">
+              <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+            </a>
+            {% endif %}
+            <span class="px-2 font-bold text-text">{{ pagination.page }}</span>
+            {% if pagination.has_next %}
+            <a href="{{ url_for('order.index', page=pagination.next_num, tanggal_mulai=start_date, tanggal_akhir=end_date, status=status, q=q, kasir_id=kasir_id) }}" class="p-1 rounded border border-border hover:bg-surface text-text">
+              <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Backdrop Detail Mobile (< lg) -->
+    <div id="detail-backdrop" onclick="closeDetailPanel()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-35 hidden lg:hidden transition-opacity"></div>
+
+    <!-- KOLOM KANAN: Detail Order Split Panel (SCR-06) (Slide-over di Mobile, Split Column di Desktop) -->
+    <aside id="detail-split-panel" class="hidden fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] bg-surface border-l border-border flex-col justify-between h-full shadow-2xl overflow-hidden lg:relative lg:z-20 lg:shadow-lg">
+      <!-- Detail Header -->
+      <div class="p-4 border-b border-border bg-slate-50 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-[22px]">receipt_long</span>
+          <div>
+            <h2 class="text-sm font-bold text-text">Detail Order</h2>
+            <p id="detail-order-nomor" class="font-mono-numeric text-xs font-bold text-primary">POS-...</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeDetailPanel()" class="p-1 rounded-lg text-text-muted hover:bg-surface-subdued">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Detail Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-4" id="detail-content-area">
+        <!-- Status Card -->
+        <div id="detail-status-card" class="p-3 rounded-xl border">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-bold text-text-muted uppercase">Status</span>
+            <span id="detail-status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"></span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border/60 text-xs">
+            <div>
+              <p class="text-[11px] text-text-muted">Kasir:</p>
+              <p id="detail-kasir-nama" class="font-semibold text-text"></p>
+            </div>
+            <div>
+              <p class="text-[11px] text-text-muted">Waktu:</p>
+              <p id="detail-waktu-text" class="font-mono-numeric text-text"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pelanggan & Metode -->
+        <div class="p-3 bg-surface-subdued rounded-xl border border-border space-y-1.5 text-xs">
+          <div class="flex justify-between">
+            <span class="text-text-muted">Pelanggan:</span>
+            <span id="detail-pelanggan-nama" class="font-semibold text-text"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-text-muted">Metode Bayar:</span>
+            <span id="detail-metode-nama" class="font-semibold text-text"></span>
+          </div>
+        </div>
+
+        <!-- Rincian Item -->
+        <div>
+          <h3 class="text-xs font-bold text-text mb-2 flex items-center justify-between">
+            <span>Item Dibeli</span>
+            <span id="detail-item-count" class="text-[11px] text-text-muted font-normal"></span>
+          </h3>
+          <div id="detail-items-list" class="divide-y divide-border border border-border rounded-xl overflow-hidden bg-surface text-xs">
+            <!-- Diisi lewat JS -->
+          </div>
+        </div>
+
+        <!-- Rincian Fiskal Total -->
+        <div class="p-3 bg-surface-subdued rounded-xl border border-border space-y-1.5 text-xs">
+          <div class="flex justify-between text-text-muted">
+            <span>Subtotal</span>
+            <span id="detail-subtotal" class="font-mono-numeric text-text font-bold"></span>
+          </div>
+          <div class="flex justify-between text-text-muted">
+            <span id="detail-tax-label">Pajak</span>
+            <span id="detail-pajak" class="font-mono-numeric text-text font-bold"></span>
+          </div>
+          <div class="pt-2 border-t border-border flex justify-between items-baseline">
+            <span class="font-bold text-text">TOTAL</span>
+            <span id="detail-total" class="font-mono-numeric text-base font-extrabold text-primary"></span>
+          </div>
+        </div>
+
+        <!-- Catatan Pengajuan Batal (Jika Ada) -->
+        <div id="detail-alasan-batal-container" class="hidden p-3 bg-amber-50 border border-amber-300 rounded-xl space-y-1 text-xs">
+          <div class="flex items-center gap-1.5 text-amber-900 font-bold">
+            <span class="material-symbols-outlined text-[16px]">assignment_late</span>
+            <span>Catatan Pengajuan Kasir:</span>
+          </div>
+          <blockquote id="detail-alasan-batal-text" class="text-amber-950 italic pl-2 border-l-2 border-warning py-0.5"></blockquote>
+          <p id="detail-diajukan-oleh" class="text-[10px] text-amber-800 text-right mt-1"></p>
+        </div>
+
+        <!-- Log Pembatalan (Jika Dibatalkan) -->
+        <div id="detail-log-dibatalkan" class="hidden p-3 bg-red-50 border border-red-200 rounded-xl space-y-1 text-xs">
+          <p class="font-bold text-danger flex items-center gap-1">
+            <span class="material-symbols-outlined text-[16px]">cancel</span>
+            Order telah dibatalkan
+          </p>
+          <p id="detail-dikonfirmasi-info" class="text-xs text-red-900"></p>
+        </div>
+
+        <!-- ACTION SECTIONS (SCR-06) -->
+        <!-- 1. Form Kasir: Ajukan Pembatalan (Jika Selesai) -->
+        <div id="kasir-action-section" class="hidden p-3 bg-surface border border-border rounded-xl space-y-3">
+          <button 
+            type="button" 
+            onclick="openDialogAjukanBatal()" 
+            class="w-full py-2 px-3 bg-warning text-white rounded-lg text-xs font-bold hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+          >
+            <span class="material-symbols-outlined text-[16px]">assignment_return</span>
+            Ajukan Pembatalan
+          </button>
+        </div>
+
+        <!-- 2. Form Admin: Verifikasi Pengajuan Batal (Jika Status pengajuan_batal) -->
+        <div id="admin-review-section" class="hidden p-3 bg-surface border-2 border-primary/30 rounded-xl space-y-3 shadow-xs">
+          <span class="text-xs font-bold text-text block">Otorisasi Pembatalan Kasir</span>
+          <label class="flex items-start gap-2 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              id="admin-cek-fisik-checkbox" 
+              onchange="toggleAdminConfirmButton()" 
+              class="mt-0.5 rounded border-border text-primary focus:ring-primary w-4 h-4"
+            />
+            <span class="text-xs text-text leading-tight">
+              Barang sudah dicek secara fisik dan retur stok telah diverifikasi di kasir.
+            </span>
+          </label>
+
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button 
+              type="button" 
+              id="btn-tolak-pengajuan" 
+              onclick="submitTolakBatal()" 
+              class="w-full py-2 px-2 bg-surface border border-danger text-danger hover:bg-danger-container rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+            >
+              <span class="material-symbols-outlined text-[16px]">cancel</span>
+              Tolak
+            </button>
+            <button 
+              type="button" 
+              id="btn-konfirmasi-pengajuan" 
+              onclick="submitKonfirmasiBatal()" 
+              disabled 
+              class="w-full py-2 px-2 bg-secondary text-white hover:bg-secondary-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors shadow-xs"
+            >
+              <span class="material-symbols-outlined text-[16px]">check_circle</span>
+              Konfirmasi Batal
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Form Admin: Batalkan Langsung (Jika Status Selesai) -->
+        <div id="admin-direct-cancel-section" class="hidden p-3 bg-surface border border-border rounded-xl space-y-3">
+          <button 
+            type="button" 
+            onclick="openDialogBatalLangsung()" 
+            class="w-full py-2 px-3 border border-danger text-danger hover:bg-danger-container rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+          >
+            <span class="material-symbols-outlined text-[16px]">cancel</span>
+            Batalkan Langsung
+          </button>
+        </div>
+      </div>
+
+      <!-- Detail Footer -->
+      <div class="p-3 border-t border-border bg-slate-50 flex items-center justify-between text-xs shrink-0">
+        <a id="detail-struk-link" href="#" class="inline-flex items-center gap-1 text-primary hover:underline font-bold">
+          <span class="material-symbols-outlined text-[16px]">print</span>
+          Cetak Struk
+        </a>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- MODAL DIALOG 1: Ajukan Pembatalan (Kasir / Admin) -->
+<div id="dialog-ajukan-batal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-surface rounded-2xl border border-border max-w-md w-full p-6 shadow-2xl">
+    <div class="flex items-center justify-between pb-3 border-b border-border">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-warning text-[24px]">assignment_return</span>
+        <h3 class="text-base font-bold text-text">Pengajuan Pembatalan</h3>
+      </div>
+      <button type="button" class="p-1 rounded-lg text-text-muted hover:bg-surface-subdued" onclick="closeDialogAjukanBatal()">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+    <div class="space-y-3 my-4">
+      <p class="text-xs text-text-muted">
+        Ajukan pembatalan untuk order <strong id="dialog-ajukan-nomor" class="text-text font-mono"></strong>.
+      </p>
+      <div>
+        <label class="block text-xs font-bold text-text-muted uppercase mb-1">
+          Alasan Pembatalan <span class="text-danger">* (min 5 karakter)</span>
+        </label>
+        <textarea 
+          id="dialog-ajukan-alasan" 
+          rows="3" 
+          placeholder="Jelaskan alasan pengajuan pembatalan secara jelas..." 
+          class="w-full px-3 py-2 bg-surface-subdued border border-border rounded-lg text-xs text-text focus:outline-none focus:border-primary"
+        ></textarea>
+        <p id="dialog-ajukan-error" class="hidden text-xs text-danger mt-1"></p>
+      </div>
+    </div>
+    <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+      <button type="button" class="px-4 py-2 rounded-lg bg-surface-subdued text-text-muted text-xs font-semibold hover:bg-slate-200 transition-colors" onclick="closeDialogAjukanBatal()">
+        Batal
+      </button>
+      <button type="button" id="btn-submit-ajukan-batal" class="px-4 py-2 rounded-lg bg-warning text-white text-xs font-bold hover:bg-amber-600 transition-colors" onclick="submitAjukanBatal()">
+        Kirim Pengajuan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DIALOG 2: Batalkan Langsung (Admin, UX-07, UX-13) -->
+<div id="dialog-batal-langsung" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-surface rounded-2xl border border-border max-w-md w-full p-6 shadow-2xl">
+    <div class="flex items-center justify-between pb-3 border-b border-border">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-danger text-[24px]">cancel</span>
+        <h3 class="text-base font-bold text-text">Batalkan Order Langsung</h3>
+      </div>
+      <button type="button" class="p-1 rounded-lg text-text-muted hover:bg-surface-subdued" onclick="closeDialogBatalLangsung()">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+    <div class="space-y-4 my-4">
+      <p class="text-xs text-text-muted">
+        Batalkan langsung order <strong id="dialog-batal-langsung-nomor" class="text-text font-mono"></strong>. Stok produk akan dikembalikan ke database.
+      </p>
+      <div>
+        <label class="block text-xs font-bold text-text-muted uppercase mb-1">
+          Alasan Pembatalan <span class="text-danger">* (min 5 karakter)</span>
+        </label>
+        <textarea 
+          id="dialog-batal-langsung-alasan" 
+          rows="2" 
+          placeholder="Alasan pembatalan langsung..." 
+          class="w-full px-3 py-2 bg-surface-subdued border border-border rounded-lg text-xs text-text focus:outline-none focus:border-primary"
+        ></textarea>
+        <p id="dialog-batal-langsung-error" class="hidden text-xs text-danger mt-1"></p>
+      </div>
+
+      <label class="flex items-start gap-2 cursor-pointer select-none p-2.5 rounded-xl bg-danger-container/40 border border-danger/30">
+        <input 
+          type="checkbox" 
+          id="dialog-batal-langsung-cek-fisik" 
+          onchange="toggleDialogBatalLangsungButton()" 
+          class="mt-0.5 rounded border-border text-danger focus:ring-danger w-4 h-4"
+        />
+        <span class="text-xs text-danger leading-tight font-medium">
+          Saya menyatakan bahwa barang telah dicek secara fisik dan stok siap dikembalikan.
+        </span>
+      </label>
+    </div>
+    <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+      <button type="button" class="px-4 py-2 rounded-lg bg-surface-subdued text-text-muted text-xs font-semibold hover:bg-slate-200 transition-colors" onclick="closeDialogBatalLangsung()">
+        Batal
+      </button>
+      <button 
+        type="button" 
+        id="btn-confirm-batal-langsung" 
+        disabled 
+        class="px-4 py-2 rounded-lg bg-danger text-white text-xs font-bold hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" 
+        onclick="submitBatalLangsung()"
+      >
+        Konfirmasi Pembatalan
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let activeOrder = null;
+  const IS_ADMIN = {% if current_user.is_admin %}true{% else %}false{% endif %};
+
+  function formatRupiah(num) {
+    const val = parseInt(num) || 0;
+    return 'Rp ' + val.toLocaleString('id-ID');
+  }
+
+  function formatDateTimeWIB(isoStr) {
+    if (!isoStr) return '-';
+    const date = new Date(isoStr);
+    const hrs = String(date.getHours()).padStart(2, '0');
+    const mins = String(date.getMinutes()).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}/${m}/${y} ${hrs}:${mins} WIB`;
+  }
+
+  async function showOrderDetail(orderId) {
+    try {
+      const resp = await fetch(`/order/${orderId}/detail`, {
+        headers: { 
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      });
+      if (!resp.ok) {
+        window.showToast("Gagal memuat detail order (Status: " + resp.status + ").", "danger");
+        return;
+      }
+
+      const o = await resp.json();
+      activeOrder = o;
+
+      document.getElementById('detail-order-nomor').textContent = o.nomor;
+      document.getElementById('detail-kasir-nama').textContent = o.kasir;
+      document.getElementById('detail-waktu-text').textContent = formatDateTimeWIB(o.waktu);
+      document.getElementById('detail-pelanggan-nama').textContent = o.pelanggan;
+      document.getElementById('detail-metode-nama').textContent = o.metode;
+      document.getElementById('detail-struk-link').href = `/pos/struk/${o.id}`;
+
+      // Status badge
+      const badge = document.getElementById('detail-status-badge');
+      const card = document.getElementById('detail-status-card');
+      if (o.status === 'selesai') {
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-secondary-container text-secondary border border-emerald-200';
+        badge.textContent = 'Selesai';
+        card.className = 'p-3 rounded-xl border border-emerald-200 bg-secondary-container/20';
+      } else if (o.status === 'pengajuan_batal') {
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-warning-container text-warning border border-amber-200';
+        badge.textContent = 'Pengajuan Batal';
+        card.className = 'p-3 rounded-xl border border-amber-200 bg-warning-container/30';
+      } else {
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-danger-container text-danger border border-red-200';
+        badge.textContent = 'Dibatalkan';
+        card.className = 'p-3 rounded-xl border border-red-200 bg-danger-container/20';
+      }
+
+      // Items list
+      document.getElementById('detail-item-count').textContent = `(${o.items.length} item)`;
+      const itemsList = document.getElementById('detail-items-list');
+      itemsList.innerHTML = o.items.map(item => `
+        <div class="p-2.5 flex justify-between items-start">
+          <div>
+            <p class="font-bold text-text">${item.nama_produk}</p>
+            <p class="text-[11px] text-text-muted">${item.jumlah} x ${formatRupiah(item.harga_satuan)}</p>
+          </div>
+          <span class="font-mono-numeric font-bold text-text">${formatRupiah(item.subtotal)}</span>
+        </div>
+      `).join('');
+
+      // Fiskal
+      document.getElementById('detail-subtotal').textContent = formatRupiah(o.subtotal);
+      document.getElementById('detail-tax-label').textContent = `Pajak (${o.tarif_pajak}%)`;
+      document.getElementById('detail-pajak').textContent = formatRupiah(o.pajak);
+      document.getElementById('detail-total').textContent = formatRupiah(o.total);
+
+      // Catatan Alasan Batal
+      const alasanContainer = document.getElementById('detail-alasan-batal-container');
+      if (o.alasan_batal) {
+        alasanContainer.classList.remove('hidden');
+        document.getElementById('detail-alasan-batal-text').textContent = `"${o.alasan_batal}"`;
+        document.getElementById('detail-diajukan-oleh').textContent = `Diajukan oleh: ${o.diajukan_oleh || '-'}`;
+      } else {
+        alasanContainer.classList.add('hidden');
+      }
+
+      // Log Dibatalkan
+      const logDibatalkan = document.getElementById('detail-log-dibatalkan');
+      if (o.status === 'dibatalkan') {
+        logDibatalkan.classList.remove('hidden');
+        document.getElementById('detail-dikonfirmasi-info').textContent = 
+          `Dikonfirmasi oleh ${o.dikonfirmasi_oleh || 'Admin'} pada ${formatDateTimeWIB(o.waktu_batal)}`;
+      } else {
+        logDibatalkan.classList.add('hidden');
+      }
+
+      // Aksi Tombol Sesuai Peran & Status
+      const kasirSection = document.getElementById('kasir-action-section');
+      const adminReviewSection = document.getElementById('admin-review-section');
+      const adminDirectSection = document.getElementById('admin-direct-cancel-section');
+
+      kasirSection.classList.add('hidden');
+      adminReviewSection.classList.add('hidden');
+      adminDirectSection.classList.add('hidden');
+
+      if (o.status === 'selesai') {
+        if (IS_ADMIN) {
+          adminDirectSection.classList.remove('hidden');
+        } else {
+          kasirSection.classList.remove('hidden');
+        }
+      } else if (o.status === 'pengajuan_batal' && IS_ADMIN) {
+        adminReviewSection.classList.remove('hidden');
+        document.getElementById('admin-cek-fisik-checkbox').checked = false;
+        toggleAdminConfirmButton();
+      }
+
+      // Buka panel & backdrop mobile
+      const panel = document.getElementById('detail-split-panel');
+      const backdrop = document.getElementById('detail-backdrop');
+      panel.classList.remove('hidden');
+      panel.classList.add('flex');
+      if (backdrop) backdrop.classList.remove('hidden');
+    } catch (err) {
+      console.error("Detail error:", err);
+      window.showToast("Terjadi kesalahan memuat detail: " + (err.message || ''), "danger");
+    }
+  }
+
+  function closeDetailPanel() {
+    const panel = document.getElementById('detail-split-panel');
+    const backdrop = document.getElementById('detail-backdrop');
+    panel.classList.remove('flex');
+    panel.classList.add('hidden');
+    if (backdrop) backdrop.classList.add('hidden');
+    activeOrder = null;
+  }
+
+  // Kasir: Dialog Ajukan Batal
+  function openDialogAjukanBatal() {
+    if (!activeOrder) return;
+    document.getElementById('dialog-ajukan-nomor').textContent = activeOrder.nomor;
+    document.getElementById('dialog-ajukan-alasan').value = '';
+    document.getElementById('dialog-ajukan-error').classList.add('hidden');
+    document.getElementById('dialog-ajukan-batal').classList.remove('hidden');
+  }
+
+  function closeDialogAjukanBatal() {
+    document.getElementById('dialog-ajukan-batal').classList.add('hidden');
+  }
+
+  async function submitAjukanBatal() {
+    if (!activeOrder) return;
+    const alasan = document.getElementById('dialog-ajukan-alasan').value.trim();
+    const errEl = document.getElementById('dialog-ajukan-error');
+
+    if (alasan.length < 5) {
+      errEl.textContent = "Alasan wajib diisi, minimal 5 karakter.";
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const btn = document.getElementById('btn-submit-ajukan-batal');
+    btn.disabled = true;
+    btn.textContent = "Mengirim...";
+
+    try {
+      const resp = await fetch(`/order/${activeOrder.id}/ajukan-batal`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken
+        },
+        body: JSON.stringify({ alasan })
+      });
+      const res = await resp.json();
+      btn.disabled = false;
+      btn.textContent = "Kirim Pengajuan";
+
+      if (resp.ok && res.success) {
+        closeDialogAjukanBatal();
+        window.showToast(res.message, "success");
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        errEl.textContent = res.message || "Gagal mengajukan pembatalan.";
+        errEl.classList.remove('hidden');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = "Kirim Pengajuan";
+      errEl.textContent = "Kesalahan koneksi ke server.";
+      errEl.classList.remove('hidden');
+    }
+  }
+
+  // Admin: Konfirmasi & Tolak Batal
+  function toggleAdminConfirmButton() {
+    const checked = document.getElementById('admin-cek-fisik-checkbox').checked;
+    document.getElementById('btn-konfirmasi-pengajuan').disabled = !checked;
+  }
+
+  async function submitKonfirmasiBatal() {
+    if (!activeOrder) return;
+    const checked = document.getElementById('admin-cek-fisik-checkbox').checked;
+    if (!checked) {
+      window.showToast("Centang dulu bahwa barang sudah dicek secara fisik.", "danger");
+      return;
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const btn = document.getElementById('btn-konfirmasi-pengajuan');
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+
+    try {
+      const resp = await fetch(`/order/${activeOrder.id}/konfirmasi-batal`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken
+        },
+        body: JSON.stringify({ cek_fisik: true })
+      });
+      const res = await resp.json();
+      btn.disabled = false;
+      btn.textContent = "Konfirmasi Batal";
+
+      if (resp.ok && res.success) {
+        window.showToast(res.message, "success");
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        window.showToast(res.message || "Gagal mengonfirmasi pembatalan.", "danger");
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = "Konfirmasi Batal";
+      window.showToast("Kesalahan koneksi ke server.", "danger");
+    }
+  }
+
+  async function submitTolakBatal() {
+    if (!activeOrder) return;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const btn = document.getElementById('btn-tolak-pengajuan');
+    btn.disabled = true;
+
+    try {
+      const resp = await fetch(`/order/${activeOrder.id}/tolak-batal`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken
+        }
+      });
+      const res = await resp.json();
+      btn.disabled = false;
+
+      if (resp.ok && res.success) {
+        window.showToast(res.message, "info");
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        window.showToast(res.message || "Gagal menolak pembatalan.", "danger");
+      }
+    } catch (err) {
+      btn.disabled = false;
+      window.showToast("Kesalahan koneksi ke server.", "danger");
+    }
+  }
+
+  // Admin: Batalkan Langsung
+  function openDialogBatalLangsung() {
+    if (!activeOrder) return;
+    document.getElementById('dialog-batal-langsung-nomor').textContent = activeOrder.nomor;
+    document.getElementById('dialog-batal-langsung-alasan').value = '';
+    document.getElementById('dialog-batal-langsung-cek-fisik').checked = false;
+    document.getElementById('dialog-batal-langsung-error').classList.add('hidden');
+    toggleDialogBatalLangsungButton();
+    document.getElementById('dialog-batal-langsung').classList.remove('hidden');
+  }
+
+  function closeDialogBatalLangsung() {
+    document.getElementById('dialog-batal-langsung').classList.add('hidden');
+  }
+
+  function toggleDialogBatalLangsungButton() {
+    const checked = document.getElementById('dialog-batal-langsung-cek-fisik').checked;
+    document.getElementById('btn-confirm-batal-langsung').disabled = !checked;
+  }
+
+  async function submitBatalLangsung() {
+    if (!activeOrder) return;
+    const alasan = document.getElementById('dialog-batal-langsung-alasan').value.trim();
+    const checked = document.getElementById('dialog-batal-langsung-cek-fisik').checked;
+    const errEl = document.getElementById('dialog-batal-langsung-error');
+
+    if (alasan.length < 5) {
+      errEl.textContent = "Alasan wajib diisi, minimal 5 karakter.";
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if (!checked) {
+      errEl.textContent = "Centang dulu bahwa barang sudah dicek secara fisik.";
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const btn = document.getElementById('btn-confirm-batal-langsung');
+    btn.disabled = true;
+    btn.textContent = "Memproses...";
+
+    try {
+      const resp = await fetch(`/order/${activeOrder.id}/batalkan-langsung`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken
+        },
+        body: JSON.stringify({ alasan, cek_fisik: true })
+      });
+      const res = await resp.json();
+      btn.disabled = false;
+      btn.textContent = "Konfirmasi Pembatalan";
+
+      if (resp.ok && res.success) {
+        closeDialogBatalLangsung();
+        window.showToast(res.message, "success");
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        errEl.textContent = res.message || "Gagal membatalkan order.";
+        errEl.classList.remove('hidden');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = "Konfirmasi Pembatalan";
+      errEl.textContent = "Kesalahan koneksi ke server.";
+      errEl.classList.remove('hidden');
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Masuk - {{ nama_toko }}{% endblock %}
+
+{% block content %}
+<div class="min-h-full flex flex-col justify-center items-center py-12 sm:px-6 lg:px-8 bg-background">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <!-- Brand Icon -->
+    <div class="mx-auto w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-md shadow-primary/20 mb-3">
+      <span class="material-symbols-outlined text-[28px]">point_of_sale</span>
+    </div>
+    <h2 class="text-2xl font-bold text-text tracking-tight">{{ nama_toko }}</h2>
+    <p class="mt-1 text-sm text-text-muted">Masuk ke kasir</p>
+  </div>
+
+  <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
+    <div class="bg-surface py-8 px-6 shadow-sm border border-border sm:rounded-2xl sm:px-10">
+      <form class="space-y-5" method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+        {{ form.hidden_tag() }}
+
+        <!-- Username Input -->
+        <div>
+          <label for="username" class="block text-sm font-semibold text-text">
+            Username <span class="text-danger">*</span>
+          </label>
+          <div class="mt-1 relative">
+            <input
+              id="username"
+              name="username"
+              type="text"
+              autocomplete="username"
+              required
+              value="{{ form.username.data or '' }}"
+              placeholder="Masukkan username"
+              class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.username.errors %}border-danger focus:border-danger focus:ring-danger{% else %}border-border focus:border-primary focus:ring-primary/20{% endif %} bg-surface text-text text-sm transition-all focus:outline-none focus:ring-2 placeholder:text-text-muted/60"
+            />
+          </div>
+          {% if form.username.errors %}
+            {% for error in form.username.errors %}
+              <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <!-- Password Input -->
+        <div>
+          <label for="password" class="block text-sm font-semibold text-text">
+            Password <span class="text-danger">*</span>
+          </label>
+          <div class="mt-1 relative flex items-center">
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              placeholder="Masukkan password"
+              class="block w-full px-3.5 py-2.5 pr-11 rounded-lg border {% if form.password.errors %}border-danger focus:border-danger focus:ring-danger{% else %}border-border focus:border-primary focus:ring-primary/20{% endif %} bg-surface text-text text-sm transition-all focus:outline-none focus:ring-2 placeholder:text-text-muted/60"
+            />
+            <button
+              type="button"
+              id="togglePassword"
+              class="absolute right-2 text-text-muted hover:text-text p-1.5 rounded-lg transition-colors"
+              title="Tampilkan password"
+              aria-label="Tampilkan password"
+            >
+              <span class="material-symbols-outlined text-[20px]" id="togglePasswordIcon">visibility</span>
+            </button>
+          </div>
+          {% if form.password.errors %}
+            {% for error in form.password.errors %}
+              <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+        <!-- Submit Button -->
+        <div>
+          <button
+            type="submit"
+            id="submitBtn"
+            class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <span id="btnText">Masuk</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Toggle password visibility (A11Y-06)
+  const toggleBtn = document.getElementById('togglePassword');
+  const passwordInput = document.getElementById('password');
+  const toggleIcon = document.getElementById('togglePasswordIcon');
+
+  if (toggleBtn && passwordInput) {
+    toggleBtn.addEventListener('click', () => {
+      const isPassword = passwordInput.getAttribute('type') === 'password';
+      passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+      toggleIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+      toggleBtn.setAttribute('title', isPassword ? 'Sembunyikan password' : 'Tampilkan password');
+      toggleBtn.setAttribute('aria-label', isPassword ? 'Sembunyikan password' : 'Tampilkan password');
+    });
+  }
+
+  // UX-12: Loading state saat submit
+  const form = document.getElementById('loginForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+
+  if (form && submitBtn) {
+    form.addEventListener('submit', () => {
+      submitBtn.disabled = true;
+      btnText.textContent = 'Memeriksa…';
+    });
+  }
+</script>
+{% endblock %}

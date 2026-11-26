@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Tambah Pengguna - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-6 md:p-8 max-w-2xl">
+  <div class="mb-6">
+    <div class="flex items-center gap-2 text-xs text-text-muted mb-1">
+      <a href="{{ url_for('pengguna.index') }}" class="hover:underline">Manajemen Pengguna</a>
+      <span>/</span>
+      <span>Tambah</span>
+    </div>
+    <h1 class="text-2xl font-bold text-text">Tambah Pengguna</h1>
+    <p class="text-sm text-text-muted mt-0.5">Buat akun kasir atau administrator baru</p>
+  </div>
+
+  <div class="bg-surface rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
+    <form method="POST" action="{{ url_for('pengguna.tambah') }}" class="space-y-5" id="formPengguna">
+      {{ form.hidden_tag() }}
+
+      <!-- Nama Lengkap -->
+      <div>
+        <label for="nama" class="block text-sm font-semibold text-text mb-1">
+          Nama Lengkap <span class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          id="nama"
+          name="nama"
+          required
+          value="{{ form.nama.data or '' }}"
+          placeholder="Contoh: Muhammad Rizky"
+          class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.nama.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        {% if form.nama.errors %}
+          {% for error in form.nama.errors %}
+            <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Username -->
+      <div>
+        <label for="username" class="block text-sm font-semibold text-text mb-1">
+          Username <span class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          required
+          value="{{ form.username.data or '' }}"
+          placeholder="Contoh: rizky_kasir"
+          class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.username.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <p class="mt-1 text-xs text-text-muted">Huruf kecil, angka, garis bawah, 3–30 karakter</p>
+        {% if form.username.errors %}
+          {% for error in form.username.errors %}
+            <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Peran -->
+      <div>
+        <label class="block text-sm font-semibold text-text mb-2">
+          Peran <span class="text-danger">*</span>
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="flex items-center gap-3 p-3.5 rounded-xl border border-border cursor-pointer hover:bg-surface-subdued transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-container/40">
+            <input type="radio" name="peran" value="kasir" {% if form.peran.data == 'kasir' or not form.peran.data %}checked{% endif %} class="text-primary focus:ring-primary"/>
+            <div>
+              <p class="text-sm font-semibold text-text">Kasir</p>
+              <p class="text-xs text-text-muted">Akses kasir POS dan riwayat order</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3.5 rounded-xl border border-border cursor-pointer hover:bg-surface-subdued transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-container/40">
+            <input type="radio" name="peran" value="admin" {% if form.peran.data == 'admin' %}checked{% endif %} class="text-primary focus:ring-primary"/>
+            <div>
+              <p class="text-sm font-semibold text-text">Admin</p>
+              <p class="text-xs text-text-muted">Akses penuh seluruh sistem</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Password -->
+      <div>
+        <label for="password" class="block text-sm font-semibold text-text mb-1">
+          Password <span class="text-danger">*</span>
+        </label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          minlength="8"
+          placeholder="Minimal 8 karakter"
+          class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.password.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <p class="mt-1 text-xs text-text-muted">Minimal 8 karakter</p>
+        {% if form.password.errors %}
+          {% for error in form.password.errors %}
+            <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Status Aktif -->
+      <div class="pt-2">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="aktif"
+            value="y"
+            {% if form.aktif.data %}checked{% endif %}
+            class="w-4 h-4 rounded text-primary focus:ring-primary border-border"
+          />
+          <span class="text-sm font-semibold text-text">Akun aktif</span>
+        </label>
+      </div>
+
+      <!-- Form Buttons -->
+      <div class="pt-4 flex items-center justify-end gap-3 border-t border-border">
+        <a href="{{ url_for('pengguna.index') }}" class="px-5 py-2.5 rounded-lg border border-border text-sm font-semibold text-text hover:bg-surface-subdued transition-colors">
+          Batal
+        </a>
+        <button
+          type="submit"
+          id="btnSimpan"
+          class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
+        >
+          <span id="btnText">Simpan pengguna</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const form = document.getElementById('formPengguna');
+  const btn = document.getElementById('btnSimpan');
+  const btnText = document.getElementById('btnText');
+  if (form && btn) {
+    form.addEventListener('submit', () => {
+      btn.disabled = true;
+      btnText.textContent = 'Menyimpan…';
+    });
+  }
+</script>
+{% endblock %}

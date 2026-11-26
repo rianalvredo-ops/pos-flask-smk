@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Masalah Server (500) - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="min-h-full flex items-center justify-center p-6 bg-background">
+  <div class="max-w-md w-full bg-surface border border-border rounded-2xl p-8 text-center shadow-sm">
+    <div class="w-16 h-16 rounded-2xl bg-danger-container text-danger flex items-center justify-center mx-auto mb-4">
+      <span class="material-symbols-outlined text-[36px]">error</span>
+    </div>
+    <h2 class="text-xl font-bold text-text mb-2">Terjadi Masalah Server (500)</h2>
+    <p class="text-sm text-text-muted mb-6 leading-relaxed">
+      Terjadi masalah di server. Coba lagi sebentar. Bila berulang, beri tahu guru atau Admin.
+    </p>
+    {% if current_user.is_authenticated %}
+      {% if current_user.is_admin %}
+        <a href="{{ url_for('dashboard.index') }}" class="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold transition-all">
+          Kembali ke beranda
+        </a>
+      {% else %}
+        <a href="{{ url_for('pos.index') }}" class="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold transition-all">
+          Kembali ke beranda
+        </a>
+      {% endif %}
+    {% else %}
+      <a href="{{ url_for('auth.login') }}" class="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold transition-all">
+        Kembali ke beranda
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+# Python & virtualenv
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.class
+*.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment secrets
+.env
+.env.local
+
+# SQLite Database & Instance folder
+instance/
+*.sqlite

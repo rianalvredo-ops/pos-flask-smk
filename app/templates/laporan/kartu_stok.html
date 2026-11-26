@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Kartu Stok & Riwayat Mutasi - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1400px] mx-auto w-full">
+  <!-- Top Header Kartu Stok -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-3 border-b border-border">
+    <div>
+      <div class="flex items-center gap-2 text-text-muted text-xs mb-1">
+        <a href="{{ url_for('laporan.index') }}" class="hover:underline">Laporan</a>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span class="text-primary font-bold">Kartu Stok</span>
+      </div>
+      <h1 class="text-2xl font-extrabold text-text tracking-tight">Kartu Stok & Log Mutasi Inventaris</h1>
+      <p class="text-xs text-text-muted mt-0.5">Catatan riwayat keluar-masuk stok barang: penjualan kasir, restock, dan pengembalian retur</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a 
+        href="{{ url_for('laporan.ekspor_kartu_stok', produk_id=produk_id, tipe=tipe) }}" 
+        class="px-4 py-2 rounded-xl bg-secondary hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-2 active:scale-95"
+        title="Unduh file CSV untuk Microsoft Excel"
+      >
+        <span class="material-symbols-outlined text-[18px]">table_view</span>
+        <span>Ekspor Kartu Stok (CSV)</span>
+      </a>
+      <a 
+        href="{{ url_for('produk.index') }}" 
+        class="px-3.5 py-2 rounded-xl border border-border bg-surface text-text hover:bg-surface-subdued text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+      >
+        <span class="material-symbols-outlined text-[18px]">inventory_2</span>
+        <span>Master Produk</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Filter Mutasi -->
+  <form method="GET" action="{{ url_for('laporan.kartu_stok') }}" class="bg-surface p-4 rounded-2xl border border-border shadow-xs flex flex-col sm:flex-row gap-3 items-end">
+    <div class="flex-1">
+      <label class="block text-xs font-bold text-text-muted uppercase mb-1">Pilih Produk</label>
+      <select name="produk_id" class="w-full pl-3 pr-9 py-2 bg-surface-subdued border border-border rounded-xl text-xs font-medium text-text focus:outline-none focus:border-primary cursor-pointer">
+        <option value="">Semua Produk</option>
+        {% for p in produk_list %}
+        <option value="{{ p.id }}" {% if produk_id == p.id %}selected{% endif %}>{{ p.kode }} - {{ p.nama }} (Sisa Stok: {{ p.stok }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="w-full sm:w-56">
+      <label class="block text-xs font-bold text-text-muted uppercase mb-1">Tipe Mutasi</label>
+      <select name="tipe" class="w-full pl-3 pr-9 py-2 bg-surface-subdued border border-border rounded-xl text-xs font-medium text-text focus:outline-none focus:border-primary cursor-pointer">
+        <option value="semua" {% if tipe == 'semua' %}selected{% endif %}>Semua Tipe Mutasi</option>
+        <option value="masuk" {% if tipe == 'masuk' %}selected{% endif %}>Masuk / Restock (+)</option>
+        <option value="keluar" {% if tipe == 'keluar' %}selected{% endif %}>Keluar / Penjualan (-)</option>
+        <option value="batal" {% if tipe == 'batal' %}selected{% endif %}>Batal / Retur (+)</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="submit" class="py-2 px-4 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
+        <span class="material-symbols-outlined text-[16px]">filter_alt</span>
+        Terapkan
+      </button>
+      <a href="{{ url_for('laporan.kartu_stok') }}" class="p-2 rounded-xl text-text-muted hover:bg-surface-subdued hover:text-danger border border-border transition-colors" title="Reset">
+        <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+      </a>
+    </div>
+  </form>
+
+  <!-- Banner Info Produk Terpilih jika Ada -->
+  {% if selected_produk %}
+  <div class="p-4 rounded-2xl bg-primary-container/20 border border-indigo-200 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold">
+        <span class="material-symbols-outlined text-[20px]">inventory</span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded bg-surface border border-border text-[11px] font-mono font-bold">{{ selected_produk.kode }}</span>
+          <h2 class="text-sm font-bold text-text">{{ selected_produk.nama }}</h2>
+        </div>
+        <p class="text-xs text-text-muted mt-0.5">Harga: {{ selected_produk.harga | rupiah }} | Kategori: {{ selected_produk.kategori or '-' }}</p>
+      </div>
+    </div>
+    <div class="text-right">
+      <span class="text-xs text-text-muted block">Sisa Stok Fisik</span>
+      <span class="font-mono-numeric text-xl font-bold text-primary">{{ selected_produk.stok }} unit</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Tabel Riwayat Mutasi Stok -->
+  <div class="bg-surface rounded-2xl border border-border shadow-xs overflow-hidden">
+    <div class="p-4 border-b border-border flex items-center justify-between bg-slate-50">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px] text-primary">history</span>
+        <h2 class="text-sm font-bold text-text">Riwayat Keluar Masuk Stok</h2>
+      </div>
+      <span class="text-xs text-text-muted">Total {{ pagination.total }} catatan mutasi</span>
+    </div>
+
+    {% if not mutasi_list %}
+    <div class="p-10 text-center text-text-muted text-xs">
+      Belum ada mutasi stok tercatat untuk kriteria filter ini.
+    </div>
+    {% else %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="bg-surface-subdued text-text-muted border-b border-border uppercase font-semibold text-[11px]">
+            <th class="py-3 px-4">Waktu (WIB)</th>
+            <th class="py-3 px-4">Produk</th>
+            <th class="py-3 px-4 text-center">Tipe Mutasi</th>
+            <th class="py-3 px-4 text-center">Perubahan</th>
+            <th class="py-3 px-4 text-center">Stok Awal</th>
+            <th class="py-3 px-4 text-center">Stok Akhir</th>
+            <th class="py-3 px-4">Keterangan</th>
+            <th class="py-3 px-4">Petugas</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for m in mutasi_list %}
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-3 px-4 font-mono-numeric text-text-muted whitespace-nowrap">{{ m.waktu | waktu_wib }}</td>
+            <td class="py-3 px-4">
+              <span class="font-bold text-text block">{{ m.produk.nama if m.produk else '-' }}</span>
+              <span class="text-[10px] text-text-muted font-mono">{{ m.produk.kode if m.produk else '' }}</span>
+            </td>
+            <td class="py-3 px-4 text-center">
+              {% if m.tipe == 'masuk' %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-secondary border border-emerald-200">
+                Restock Masuk
+              </span>
+              {% elif m.tipe == 'keluar' %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary-container text-primary border border-indigo-200">
+                Penjualan Kasir
+              </span>
+              {% elif m.tipe == 'batal' %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-warning-container text-warning border border-amber-200">
+                Retur Batal
+              </span>
+              {% else %}
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-surface-subdued text-text-muted border border-border">
+                {{ m.tipe }}
+              </span>
+              {% endif %}
+            </td>
+            <td class="py-3 px-4 text-center font-mono-numeric font-bold {% if m.tipe in ['masuk', 'batal'] %}text-secondary{% else %}text-danger{% endif %}">
+              {% if m.tipe in ['masuk', 'batal'] %}+{% else %}-{% endif %}{{ m.jumlah }}
+            </td>
+            <td class="py-3 px-4 text-center font-mono-numeric text-text-muted">{{ m.stok_sebelum }}</td>
+            <td class="py-3 px-4 text-center font-mono-numeric font-bold text-text">{{ m.stok_sesudah }}</td>
+            <td class="py-3 px-4 text-text-muted">{{ m.keterangan or '-' }}</td>
+            <td class="py-3 px-4 text-text font-medium">{{ m.user.nama if m.user else 'Sistem' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginasi -->
+    {% if pagination.pages > 1 %}
+    <div class="px-4 py-3 bg-slate-50 border-t border-border flex items-center justify-between text-xs text-text-muted">
+      <span>Halaman {{ pagination.page }} dari {{ pagination.pages }}</span>
+      <div class="flex items-center gap-1">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('laporan.kartu_stok', page=pagination.prev_num, produk_id=produk_id, tipe=tipe) }}" class="p-1 rounded border border-border hover:bg-surface text-text">
+          <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+        </a>
+        {% endif %}
+        <span class="px-2 font-bold text-text">{{ pagination.page }}</span>
+        {% if pagination.has_next %}
+        <a href="{{ url_for('laporan.kartu_stok', page=pagination.next_num, produk_id=produk_id, tipe=tipe) }}" class="p-1 rounded border border-border hover:bg-surface text-text">
+          <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

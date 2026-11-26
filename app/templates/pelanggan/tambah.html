@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Tambah Pelanggan - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-6 md:p-8 max-w-xl">
+  <div class="mb-6">
+    <div class="flex items-center gap-2 text-xs text-text-muted mb-1">
+      <a href="{{ url_for('pelanggan.index') }}" class="hover:underline">Data Pelanggan</a>
+      <span>/</span>
+      <span>Tambah</span>
+    </div>
+    <h1 class="text-2xl font-bold text-text">Tambah Pelanggan Baru</h1>
+    <p class="text-sm text-text-muted mt-0.5">Daftarkan kontak pembeli atau langganan toko lab</p>
+  </div>
+
+  <div class="bg-surface rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
+    <form method="POST" action="{{ url_for('pelanggan.tambah') }}" class="space-y-5" id="formPelanggan">
+      {{ form.hidden_tag() }}
+
+      <!-- Nama Pelanggan -->
+      <div>
+        <label for="nama" class="block text-sm font-semibold text-text mb-1">
+          Nama Pelanggan <span class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          id="nama"
+          name="nama"
+          required
+          value="{{ form.nama.data or '' }}"
+          placeholder="Contoh: Ibu Fatimah"
+          class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.nama.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        {% if form.nama.errors %}
+          {% for error in form.nama.errors %}
+            <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Telepon -->
+      <div>
+        <label for="telepon" class="block text-sm font-semibold text-text mb-1">
+          Nomor Telepon
+        </label>
+        <input
+          type="text"
+          id="telepon"
+          name="telepon"
+          value="{{ form.telepon.data or '' }}"
+          placeholder="Contoh: 08123456789"
+          class="block w-full px-3.5 py-2.5 rounded-lg border {% if form.telepon.errors %}border-danger focus:border-danger{% else %}border-border focus:border-primary{% endif %} bg-surface text-text text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+        <p class="mt-1 text-xs text-text-muted">Hanya boleh angka dan tanda +</p>
+        {% if form.telepon.errors %}
+          {% for error in form.telepon.errors %}
+            <p class="mt-1 text-xs text-danger font-medium">{{ error }}</p>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Alamat -->
+      <div>
+        <label for="alamat" class="block text-sm font-semibold text-text mb-1">
+          Alamat
+        </label>
+        <textarea
+          id="alamat"
+          name="alamat"
+          rows="3"
+          placeholder="Alamat tempat tinggal atau divisi/kelas..."
+          class="block w-full px-3.5 py-2.5 rounded-lg border border-border focus:border-primary bg-surface text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >{{ form.alamat.data or '' }}</textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="pt-4 flex items-center justify-end gap-3 border-t border-border">
+        <a href="{{ url_for('pelanggan.index') }}" class="px-5 py-2.5 rounded-lg border border-border text-sm font-semibold text-text hover:bg-surface-subdued transition-colors">
+          Batal
+        </a>
+        <button
+          type="submit"
+          id="btnSimpan"
+          class="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
+        >
+          <span id="btnText">Simpan pelanggan</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const form = document.getElementById('formPelanggan');
+  const btn = document.getElementById('btnSimpan');
+  const btnText = document.getElementById('btnText');
+  if (form && btn) {
+    form.addEventListener('submit', () => {
+      btn.disabled = true;
+      btnText.textContent = 'Menyimpan…';
+    });
+  }
+</script>
+{% endblock %}

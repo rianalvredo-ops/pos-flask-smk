@@ -1,0 +1,4 @@
+﻿[lint]
+# E9: kesalahan sintaks, F: pyflakes (impor/variabel tak terpakai, nama salah),
+# I: urutan impor (isort)
+select = ["E9", "F", "I"]

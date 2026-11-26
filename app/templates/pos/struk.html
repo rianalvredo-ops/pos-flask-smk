@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Struk {{ order.nomor }} - {{ pengaturan.nama_toko }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    body, html {
+      background-color: #ffffff !important;
+      color: #000000 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    .no-print {
+      display: none !important;
+    }
+    aside, header, nav, #toast-container {
+      display: none !important;
+    }
+    main {
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: visible !important;
+    }
+    #struk-wrapper {
+      padding: 0 !important;
+      margin: 0 auto !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
+    #struk-kertas {
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+      padding: 4mm !important;
+      margin: 0 auto !important;
+      width: var(--struk-width, 80mm) !important;
+      max-width: var(--struk-width, 80mm) !important;
+    }
+    @page {
+      size: auto;
+      margin: 0mm;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex flex-col bg-slate-100 p-6 min-h-full">
+  <!-- Top Action Bar (No Print) -->
+  <div class="no-print max-w-xl mx-auto w-full mb-6 space-y-4">
+    <!-- Success Banner (UX-05) -->
+    <div class="bg-secondary-container border border-secondary/40 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-secondary text-[28px]">check_circle</span>
+        <div>
+          <h2 class="text-sm font-bold text-text">Order {{ order.nomor }} berhasil dibayar.</h2>
+          {% if order.metode_bayar.jenis == 'tunai' and order.kembalian is not none %}
+          <p class="text-xs text-text-muted mt-0.5">Kembalian: <span class="font-bold text-secondary">{{ order.kembalian | rupiah }}</span></p>
+          {% endif %}
+        </div>
+      </div>
+      <a href="{{ url_for('pos.index') }}" class="px-3 py-1.5 rounded-lg bg-surface border border-border text-xs font-semibold text-text hover:bg-surface-subdued transition-colors flex items-center gap-1">
+        <span class="material-symbols-outlined text-[16px]">point_of_sale</span>
+        Order baru
+      </a>
+    </div>
+
+    <!-- Toolbar: Tombol Cetak & Pilihan Lebar Kertas -->
+    <div class="bg-surface border border-border rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+      <div class="flex items-center gap-4">
+        <span class="text-xs font-bold text-text-muted uppercase tracking-wider">Lebar Kertas:</span>
+        <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-text">
+          <input type="radio" name="paper-size" value="80mm" checked onchange="setPaperWidth('80mm')" class="text-primary focus:ring-primary"/>
+          80 mm (Standar)
+        </label>
+        <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-text">
+          <input type="radio" name="paper-size" value="58mm" onchange="setPaperWidth('58mm')" class="text-primary focus:ring-primary"/>
+          58 mm (Kecil)
+        </label>
+      </div>
+
+      <!-- Tombol Aksi Utama Cetak Struk (UX-05) -->
+      <button 
+        type="button" 
+        onclick="window.print()" 
+        class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-sm font-bold flex items-center gap-2 shadow-md active:scale-95 transition-all"
+      >
+        <span class="material-symbols-outlined text-[20px]">print</span>
+        Cetak struk
+      </button>
+    </div>
+  </div>
+
+  <!-- Area Kertas Struk (Monospace JetBrains Mono) -->
+  <div id="struk-wrapper" class="flex-1 flex justify-center pb-12">
+    <div 
+      id="struk-kertas" 
+      class="bg-surface border border-border rounded-2xl p-6 shadow-md font-mono text-xs text-text transition-all duration-200"
+      style="width: 80mm; max-width: 80mm;"
+    >
+      <!-- Kop Toko -->
+      <div class="text-center mb-3">
+        <h1 class="text-sm font-bold uppercase tracking-wide leading-tight">{{ pengaturan.nama_toko }}</h1>
+        {% if pengaturan.alamat_toko %}
+        <p class="text-[11px] text-text-muted mt-1 leading-snug">{{ pengaturan.alamat_toko }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Garis Pemisah -->
+      <div class="border-t border-dashed border-text/60 my-2"></div>
+
+      <!-- Informasi Transaksi -->
+      <div class="space-y-1 text-[11px] leading-tight">
+        <div class="flex justify-between">
+          <span class="text-text-muted">No:</span>
+          <span class="font-bold">{{ order.nomor }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-text-muted">Waktu:</span>
+          <span>{{ order.waktu | waktu_wib }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-text-muted">Kasir:</span>
+          <span class="truncate max-w-[130px]">{{ order.kasir.nama }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-text-muted">Plg:</span>
+          <span class="truncate max-w-[130px]">{{ order.pelanggan.nama }}</span>
+        </div>
+      </div>
+
+      <!-- Tanda Status Pembatalan jika ada (AC-84) -->
+      {% if order.status == 'pengajuan_batal' %}
+      <div class="border-y-2 border-warning my-2 py-1 text-center font-bold text-warning tracking-widest text-xs">
+        *** PENGAJUAN BATAL ***
+      </div>
+      {% elif order.status == 'dibatalkan' %}
+      <div class="border-y-2 border-danger my-2 py-1 text-center font-bold text-danger tracking-widest text-xs">
+        *** DIBATALKAN ***
+      </div>
+      {% else %}
+      <div class="border-t border-dashed border-text/60 my-2"></div>
+      {% endif %}
+
+      <!-- Daftar Item Pesanan -->
+      <div class="space-y-2 my-2 text-[11px]">
+        {% for item in order.items %}
+        <div>
+          <div class="font-bold text-text leading-tight">{{ item.nama_produk }}</div>
+          <div class="flex justify-between text-text mt-0.5">
+            <span class="text-text-muted">{{ item.jumlah }} x {{ item.harga_satuan | rupiah }}</span>
+            <span class="font-semibold">{{ item.subtotal | rupiah }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Garis Pemisah Subtotal -->
+      <div class="border-t border-dashed border-text/60 my-2"></div>
+
+      <!-- Ringkasan Angka Pembayaran -->
+      <div class="space-y-1 text-[11px] leading-tight">
+        <div class="flex justify-between">
+          <span class="text-text-muted">Subtotal:</span>
+          <span>{{ order.subtotal | rupiah }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-text-muted">Pajak ({{ order.tarif_pajak }}%):</span>
+          <span>{{ order.pajak | rupiah }}</span>
+        </div>
+        <div class="flex justify-between font-bold text-xs pt-1 border-t border-dotted border-border">
+          <span>TOTAL:</span>
+          <span>{{ order.total | rupiah }}</span>
+        </div>
+        <div class="flex justify-between pt-1">
+          <span class="text-text-muted">Metode:</span>
+          <span class="font-semibold uppercase">{{ order.metode_bayar.nama }}</span>
+        </div>
+        {% if order.metode_bayar.jenis == 'tunai' %}
+        <div class="flex justify-between">
+          <span class="text-text-muted">Tunai:</span>
+          <span>{{ (order.uang_diterima or 0) | rupiah }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-text-muted">Kembalian:</span>
+          <span>{{ (order.kembalian or 0) | rupiah }}</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Garis Pemisah Penutup -->
+      <div class="border-t border-dashed border-text/60 my-3"></div>
+
+      <!-- Footer Struk -->
+      <div class="text-center text-[11px] text-text-muted space-y-1">
+        <p class="font-semibold">Terima kasih</p>
+        <p class="text-[10px]">Barang yang dibeli tidak dapat ditukar</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setPaperWidth(size) {
+    const el = document.getElementById('struk-kertas');
+    if (!el) return;
+    el.style.width = size;
+    el.style.maxWidth = size;
+    document.documentElement.style.setProperty('--struk-width', size);
+  }
+</script>
+{% endblock %}

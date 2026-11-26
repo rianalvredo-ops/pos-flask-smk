@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Master Data Produk - SMK Mart POS{% endblock %}
+
+{% block content %}
+<div class="p-6 md:p-8 space-y-6">
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-text">Master Data Produk</h1>
+      <p class="text-sm text-text-muted mt-0.5">Kelola katalog barang, harga, dan ketersediaan stok lab</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{{ url_for('laporan.kartu_stok') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-lg border border-border bg-surface text-text hover:bg-surface-subdued text-sm font-semibold transition-all">
+        <span class="material-symbols-outlined text-[18px]">history</span>
+        Kartu Stok
+      </a>
+      <a href="{{ url_for('produk.tambah') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all active:scale-95">
+        <span class="material-symbols-outlined text-[20px]">add_box</span>
+        Tambah Produk
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-surface p-4 rounded-2xl border border-border">
+      <p class="text-xs font-semibold text-text-muted uppercase">Produk Aktif</p>
+      <p class="text-2xl font-bold text-text mt-1 font-mono">{{ total_aktif }}</p>
+    </div>
+    <div class="bg-surface p-4 rounded-2xl border border-border">
+      <p class="text-xs font-semibold text-text-muted uppercase">Nilai Total Stok</p>
+      <p class="text-xl font-bold text-primary mt-1 font-mono">{{ total_nilai_stok | rupiah }}</p>
+    </div>
+    <div class="bg-surface p-4 rounded-2xl border border-border">
+      <p class="text-xs font-semibold text-text-muted uppercase">Stok Menipis (≤ {{ ambang }})</p>
+      <p class="text-2xl font-bold text-warning mt-1 font-mono">{{ total_menipis }}</p>
+    </div>
+    <div class="bg-surface p-4 rounded-2xl border border-border">
+      <p class="text-xs font-semibold text-text-muted uppercase">Kategori</p>
+      <p class="text-2xl font-bold text-text mt-1 font-mono">{{ kategori_set | length }}</p>
+    </div>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <form method="GET" action="{{ url_for('produk.index') }}" class="bg-surface p-4 rounded-2xl border border-border flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+    <div class="flex-1 relative">
+      <span class="material-symbols-outlined absolute left-3 top-2.5 text-text-muted text-[20px]">search</span>
+      <input
+        type="text"
+        name="q"
+        value="{{ q }}"
+        placeholder="Cari kode atau nama produk..."
+        class="w-full pl-9 pr-4 py-2 rounded-lg border border-border focus:border-primary text-sm bg-surface text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+    </div>
+    <div class="flex items-center gap-2">
+      <select name="kategori" class="py-2 pl-3 pr-9 rounded-lg border border-border text-sm bg-surface text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer">
+        <option value="">Semua Kategori</option>
+        {% for kat in kategori_set %}
+          <option value="{{ kat }}" {% if kategori_filter == kat %}selected{% endif %}>{{ kat }}</option>
+        {% endfor %}
+      </select>
+      <select name="status" class="py-2 pl-3 pr-9 rounded-lg border border-border text-sm bg-surface text-text focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer">
+        <option value="">Semua Status</option>
+        <option value="aktif" {% if status_filter == 'aktif' %}selected{% endif %}>Aktif</option>
+        <option value="nonaktif" {% if status_filter == 'nonaktif' %}selected{% endif %}>Nonaktif</option>
+      </select>
+      <button type="submit" class="px-4 py-2 rounded-lg bg-surface-subdued hover:bg-border text-text font-semibold text-sm transition-colors cursor-pointer">
+        Filter
+      </button>
+      {% if q or kategori_filter or status_filter %}
+        <a href="{{ url_for('produk.index') }}" class="px-3 py-2 rounded-lg text-text-muted hover:text-danger text-sm font-medium transition-colors" title="Reset filter">
+          Reset
+        </a>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Table Card -->
+  <div class="bg-surface rounded-2xl border border-border shadow-sm overflow-hidden">
+    {% if produks %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr class="bg-surface-subdued border-b border-border text-xs uppercase font-semibold text-text-muted">
+            <th class="py-3.5 px-6">Kode</th>
+            <th class="py-3.5 px-6">Nama Produk</th>
+            <th class="py-3.5 px-6">Kategori</th>
+            <th class="py-3.5 px-6 text-right">Harga</th>
+            <th class="py-3.5 px-6 text-center">Stok</th>
+            <th class="py-3.5 px-6">Status</th>
+            <th class="py-3.5 px-6 text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for p in produks %}
+          <tr class="hover:bg-surface-subdued/50 transition-colors">
+            <td class="py-4 px-6 font-mono font-semibold text-primary text-xs">{{ p.kode }}</td>
+            <td class="py-4 px-6 font-semibold text-text">{{ p.nama }}</td>
+            <td class="py-4 px-6 text-text-muted">{{ p.kategori or '-' }}</td>
+            <td class="py-4 px-6 text-right font-mono font-bold text-text">{{ p.harga | rupiah }}</td>
+            <td class="py-4 px-6 text-center font-mono">
+              {% if p.stok == 0 %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-danger-container text-danger">
+                  Habis (0)
+                </span>
+              {% elif p.stok <= ambang %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-warning-container text-warning">
+                  Menipis: {{ p.stok }}
+                </span>
+              {% else %}
+                <span class="text-text font-semibold">{{ p.stok }}</span>
+              {% endif %}
+            </td>
+            <td class="py-4 px-6">
+              {% if p.aktif %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-secondary-container text-secondary-hover">
+                  <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  Aktif
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-danger-container text-danger">
+                  <span class="w-1.5 h-1.5 rounded-full bg-danger"></span>
+                  Nonaktif
+                </span>
+              {% endif %}
+            </td>
+            <td class="py-4 px-6 text-right">
+              <div class="inline-flex items-center justify-end gap-1.5">
+                <button 
+                  type="button" 
+                  onclick="openModalRestock({{ p.id }}, '{{ p.kode }}', '{{ p.nama }}', {{ p.stok }})" 
+                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-secondary-container text-secondary hover:bg-secondary hover:text-white text-xs font-bold transition-all shadow-2xs"
+                  title="Tambah Stok Cepat"
+                >
+                  <span class="material-symbols-outlined text-[16px]">add_circle</span>
+                  <span>Restock</span>
+                </button>
+                <a 
+                  href="{{ url_for('produk.kartu_stok_produk', produk_id=p.id) }}" 
+                  class="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-subdued transition-colors" 
+                  title="Lihat Kartu Stok"
+                >
+                  <span class="material-symbols-outlined text-[18px]">history</span>
+                </a>
+                <a 
+                  href="{{ url_for('produk.ubah', produk_id=p.id) }}" 
+                  class="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-surface-subdued hover:bg-primary-container text-xs font-semibold text-text hover:text-primary transition-colors"
+                >
+                  Ubah
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <!-- State Kosong (UX-08) -->
+    <div class="p-12 text-center">
+      <div class="w-12 h-12 rounded-2xl bg-surface-subdued text-text-muted flex items-center justify-center mx-auto mb-3">
+        <span class="material-symbols-outlined text-[28px]">inventory</span>
+      </div>
+      <h3 class="text-base font-bold text-text mb-1">Belum ada produk</h3>
+      <p class="text-xs text-text-muted mb-4">Tambahkan data produk baru untuk memulai katalog transaksi kasir.</p>
+      <a href="{{ url_for('produk.tambah') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-semibold">
+        <span class="material-symbols-outlined text-[18px]">add_box</span>
+        Tambah produk
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- MODAL DIALOG: Restock Cepat Inventaris -->
+<div id="modal-restock" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-surface rounded-2xl border border-border max-w-md w-full p-6 shadow-2xl">
+    <div class="flex items-center justify-between pb-3 border-b border-border">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-secondary-container text-secondary flex items-center justify-center">
+          <span class="material-symbols-outlined text-[20px]">add_box</span>
+        </div>
+        <h3 class="text-base font-bold text-text">Restock Cepat Produk</h3>
+      </div>
+      <button type="button" class="p-1 rounded-lg text-text-muted hover:bg-surface-subdued" onclick="closeModalRestock()">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+
+    <div class="space-y-4 my-4">
+      <div class="p-3 bg-surface-subdued rounded-xl border border-border">
+        <div class="flex items-center justify-between">
+          <span id="restock-kode" class="font-mono text-xs font-bold text-primary px-2 py-0.5 rounded bg-surface border border-border">PRD-...</span>
+          <span class="text-xs text-text-muted">Stok saat ini: <strong id="restock-stok-saat-ini" class="text-text font-mono font-bold">0</strong></span>
+        </div>
+        <p id="restock-nama" class="font-bold text-sm text-text mt-1.5"></p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-text-muted uppercase mb-1">
+          Jumlah Tambahan Stok <span class="text-danger">*</span>
+        </label>
+        <div class="relative">
+          <input 
+            type="number" 
+            id="restock-jumlah-input" 
+            min="1" 
+            step="1" 
+            value="10"
+            class="w-full px-3 py-2 bg-surface-subdued border border-border rounded-xl text-sm font-mono-numeric font-bold text-text focus:outline-none focus:border-primary"
+          />
+        </div>
+        <!-- Quick Preset Buttons -->
+        <div class="flex items-center gap-1.5 mt-2">
+          <span class="text-[11px] text-text-muted mr-1">Preset:</span>
+          <button type="button" onclick="setRestockPreset(5)" class="px-2 py-0.5 rounded-md bg-surface-subdued hover:bg-slate-200 text-xs font-mono font-semibold">+5</button>
+          <button type="button" onclick="setRestockPreset(10)" class="px-2 py-0.5 rounded-md bg-surface-subdued hover:bg-slate-200 text-xs font-mono font-semibold">+10</button>
+          <button type="button" onclick="setRestockPreset(25)" class="px-2 py-0.5 rounded-md bg-surface-subdued hover:bg-slate-200 text-xs font-mono font-semibold">+25</button>
+          <button type="button" onclick="setRestockPreset(50)" class="px-2 py-0.5 rounded-md bg-surface-subdued hover:bg-slate-200 text-xs font-mono font-semibold">+50</button>
+          <button type="button" onclick="setRestockPreset(100)" class="px-2 py-0.5 rounded-md bg-surface-subdued hover:bg-slate-200 text-xs font-mono font-semibold">+100</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-text-muted uppercase mb-1">
+          Keterangan / Sumber Barang (Opsional)
+        </label>
+        <input 
+          type="text" 
+          id="restock-keterangan-input" 
+          placeholder="Contoh: Kulakan Distributor Toko / Donasi Praktik" 
+          class="w-full px-3 py-2 bg-surface-subdued border border-border rounded-xl text-xs text-text focus:outline-none focus:border-primary"
+        />
+      </div>
+
+      <p id="restock-error" class="hidden text-xs text-danger"></p>
+    </div>
+
+    <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+      <button type="button" class="px-4 py-2 rounded-lg bg-surface-subdued text-text-muted text-xs font-semibold hover:bg-slate-200 transition-colors" onclick="closeModalRestock()">
+        Batal
+      </button>
+      <button 
+        type="button" 
+        id="btn-confirm-restock" 
+        class="px-4 py-2 rounded-lg bg-secondary text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-1.5 shadow-sm active:scale-95" 
+        onclick="submitRestockCepat()"
+      >
+        <span class="material-symbols-outlined text-[16px]">save</span>
+        <span>Tambah Stok</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let activeRestockProdukId = null;
+
+  function openModalRestock(id, kode, nama, stok) {
+    activeRestockProdukId = id;
+    document.getElementById('restock-kode').textContent = kode;
+    document.getElementById('restock-nama').textContent = nama;
+    document.getElementById('restock-stok-saat-ini').textContent = stok + ' unit';
+    document.getElementById('restock-jumlah-input').value = '10';
+    document.getElementById('restock-keterangan-input').value = '';
+    document.getElementById('restock-error').classList.add('hidden');
+    document.getElementById('modal-restock').classList.remove('hidden');
+    document.getElementById('restock-jumlah-input').focus();
+  }
+
+  function closeModalRestock() {
+    document.getElementById('modal-restock').classList.add('hidden');
+    activeRestockProdukId = null;
+  }
+
+  function setRestockPreset(num) {
+    document.getElementById('restock-jumlah-input').value = num;
+  }
+
+  async function submitRestockCepat() {
+    if (!activeRestockProdukId) return;
+    const jumlahVal = parseInt(document.getElementById('restock-jumlah-input').value);
+    const keteranganVal = document.getElementById('restock-keterangan-input').value.trim();
+    const errEl = document.getElementById('restock-error');
+
+    if (isNaN(jumlahVal) || jumlahVal <= 0) {
+      errEl.textContent = "Jumlah tambahan stok minimal 1 unit.";
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const btn = document.getElementById('btn-confirm-restock');
+    btn.disabled = true;
+    btn.textContent = "Menyimpan...";
+
+    try {
+      const resp = await fetch(`/produk/${activeRestockProdukId}/tambah-stok`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: JSON.stringify({
+          jumlah: jumlahVal,
+          keterangan: keteranganVal
+        })
+      });
+
+      const res = await resp.json();
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">save</span><span>Tambah Stok</span>`;
+
+      if (resp.ok && res.success) {
+        closeModalRestock();
+        window.showToast(res.message, "success");
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        errEl.textContent = res.message || "Gagal menambah stok.";
+        errEl.classList.remove('hidden');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">save</span><span>Tambah Stok</span>`;
+      errEl.textContent = "Terjadi kesalahan koneksi ke server.";
+      errEl.classList.remove('hidden');
+    }
+  }
+</script>
+{% endblock %}
